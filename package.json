@@ -1,0 +1,61 @@
+{
+  "name": "sensetype-ai",
+  "title": "SenseType AI",
+  "description": "AI-powered input engine that senses your intent and transforms your typing",
+  "icon": "extension-icon.png",
+  "author": "thomas",
+  "categories": ["Productivity", "Developer Tools"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "index",
+      "title": "SenseType AI",
+      "subtitle": "Transform your text",
+      "description": "AI-powered text transformation with real-time feedback",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "openrouterApiKey",
+      "title": "OpenRouter API Key",
+      "description": "Your OpenRouter API key for accessing AI models",
+      "type": "password",
+      "required": true
+    },
+    {
+      "name": "model",
+      "title": "Model",
+      "description": "The AI model to use for text transformation",
+      "type": "textfield",
+      "required": false,
+      "default": "google/gemini-2.5-flash"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.87.0",
+    "@raycast/utils": "^1.17.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "22.10.1",
+    "@types/react": "18.3.14",
+    "eslint": "^8.57.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix --relaxed",
+    "lint": "ray lint --relaxed",
+    "lint:strict": "ray lint",
+    "prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1",
+    "publish": "npx @raycast/api@latest publish",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}
