@@ -17,16 +17,24 @@
   ],
   "preferences": [
     {
-      "name": "openrouterApiKey",
-      "title": "OpenRouter API Key",
-      "description": "Your OpenRouter API key for accessing AI models",
+      "name": "apiKey",
+      "title": "API Key",
+      "description": "API key for the AI service",
       "type": "password",
       "required": true
     },
     {
+      "name": "apiBaseUrl",
+      "title": "API Base URL",
+      "description": "OpenAI-compatible API endpoint",
+      "type": "textfield",
+      "required": false,
+      "default": "https://openrouter.ai/api/v1"
+    },
+    {
       "name": "model",
       "title": "Model",
-      "description": "OpenRouter model ID (e.g. google/gemini-2.5-flash, openai/gpt-4o)",
+      "description": "Model ID (e.g. google/gemini-2.5-flash, gpt-4o)",
       "type": "textfield",
       "required": false,
       "default": "google/gemini-2.5-flash"

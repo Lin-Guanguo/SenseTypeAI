@@ -8,9 +8,11 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 type ExtensionPreferences = {
-  /** OpenRouter API Key - Your OpenRouter API key for accessing AI models */
-  "openrouterApiKey": string,
-  /** Model - OpenRouter model ID (e.g. google/gemini-2.5-flash, openai/gpt-4o) */
+  /** API Key - API key for the AI service */
+  "apiKey": string,
+  /** API Base URL - OpenAI-compatible API endpoint */
+  "apiBaseUrl": string,
+  /** Model - Model ID (e.g. google/gemini-2.5-flash, gpt-4o) */
   "model": string,
   /** Custom Prompts (JSON) - Add custom prompts (shown before defaults). JSON array: [{"name": "Name", "prompt": "..."}] */
   "prompts": string

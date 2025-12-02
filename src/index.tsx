@@ -13,7 +13,8 @@ import { callOpenRouter, isAbortError, isOpenRouterError, parsePrompts, Prompt }
 import defaultPrompts from "./prompts.json";
 
 interface Preferences {
-  openrouterApiKey: string;
+  apiKey: string;
+  apiBaseUrl?: string;
   model: string;
   prompts?: string;
 }
@@ -93,7 +94,8 @@ export default function Command() {
 
       try {
         const response = await callOpenRouter(text, {
-          apiKey: preferences.openrouterApiKey,
+          apiKey: preferences.apiKey,
+          baseUrl: preferences.apiBaseUrl,
           model,
           signal: abortController.signal,
           templatePrompt: getPromptContent(promptName),
@@ -132,7 +134,7 @@ export default function Command() {
         setIsLoading(false);
       }
     },
-    [preferences.openrouterApiKey, model, getPromptContent, lastGoodOutput]
+    [preferences.apiKey, preferences.apiBaseUrl, model, getPromptContent, lastGoodOutput]
   );
 
   // Cleanup on unmount

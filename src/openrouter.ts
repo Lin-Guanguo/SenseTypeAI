@@ -3,7 +3,7 @@
  * Returns normalized { text, meta } responses.
  */
 
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "google/gemini-2.5-flash";
 
 export interface OpenRouterMeta {
@@ -32,6 +32,7 @@ export interface ChatMessage {
 
 export interface OpenRouterOptions {
   apiKey: string;
+  baseUrl?: string;
   model?: string;
   signal?: AbortSignal;
   templatePrompt?: string;
@@ -116,6 +117,7 @@ export async function callOpenRouter(
 ): Promise<OpenRouterResponse> {
   const {
     apiKey,
+    baseUrl = DEFAULT_BASE_URL,
     model = DEFAULT_MODEL,
     signal,
     templatePrompt,
@@ -138,7 +140,10 @@ export async function callOpenRouter(
 
   messages.push({ role: "user", content: input });
 
-  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+  // Remove trailing slash from baseUrl if present
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+
+  const response = await fetch(`${normalizedBaseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
