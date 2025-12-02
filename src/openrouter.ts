@@ -34,9 +34,55 @@ export interface OpenRouterOptions {
   apiKey: string;
   model?: string;
   signal?: AbortSignal;
-  systemPrompt?: string;
+  templatePrompt?: string;
   referer?: string;
 }
+
+/**
+ * Template definition for prompt templates
+ */
+export interface Template {
+  name: string;
+  prompt: string;
+}
+
+/**
+ * Parse templates JSON string into Template array.
+ * Returns empty array on parse error.
+ */
+export function parseTemplates(json: string): { templates: Template[]; error?: string } {
+  if (!json || !json.trim()) {
+    return { templates: [] };
+  }
+
+  try {
+    const parsed = JSON.parse(json);
+
+    if (!Array.isArray(parsed)) {
+      return { templates: [], error: "Templates must be a JSON array" };
+    }
+
+    const templates: Template[] = [];
+    for (const item of parsed) {
+      if (typeof item.name === "string" && typeof item.prompt === "string") {
+        templates.push({ name: item.name, prompt: item.prompt });
+      }
+    }
+
+    return { templates };
+  } catch (e) {
+    return {
+      templates: [],
+      error: `Invalid JSON: ${e instanceof Error ? e.message : "parse error"}`,
+    };
+  }
+}
+
+/**
+ * Default prompt when no template is selected
+ */
+export const DEFAULT_PROMPT =
+  "You are SenseType AI. Improve grammar, spelling, clarity, and punctuation. Maintain original meaning and tone. Return ONLY the improved text.";
 
 interface OpenRouterAPIResponse {
   id: string;
@@ -77,7 +123,7 @@ export async function callOpenRouter(
     apiKey,
     model = DEFAULT_MODEL,
     signal,
-    systemPrompt,
+    templatePrompt,
     referer = DEFAULT_REFERER,
   } = options;
 
@@ -91,9 +137,8 @@ export async function callOpenRouter(
 
   const messages: ChatMessage[] = [];
 
-  if (systemPrompt) {
-    messages.push({ role: "system", content: systemPrompt });
-  }
+  const effectivePrompt = templatePrompt?.trim() || DEFAULT_PROMPT;
+  messages.push({ role: "system", content: effectivePrompt });
 
   messages.push({ role: "user", content: input });
 

@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { callOpenRouter, isOpenRouterError, isAbortError } from "../openrouter";
+import {
+  callOpenRouter,
+  isOpenRouterError,
+  isAbortError,
+  parseTemplates,
+  DEFAULT_PROMPT,
+} from "../openrouter";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -74,7 +80,27 @@ describe("callOpenRouter", () => {
     );
   });
 
-  it("should include system prompt when provided", async () => {
+  it("should use DEFAULT_PROMPT when no templatePrompt provided", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          choices: [{ message: { content: "test" }, finish_reason: "stop" }],
+          model: "test-model",
+        }),
+    });
+
+    await callOpenRouter("User input", { apiKey: "test-key" });
+
+    const callArgs = mockFetch.mock.calls[0];
+    const body = JSON.parse(callArgs[1].body);
+
+    expect(body.messages).toHaveLength(2);
+    expect(body.messages[0]).toEqual({ role: "system", content: DEFAULT_PROMPT });
+    expect(body.messages[1]).toEqual({ role: "user", content: "User input" });
+  });
+
+  it("should use templatePrompt when provided", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () =>
@@ -86,14 +112,14 @@ describe("callOpenRouter", () => {
 
     await callOpenRouter("User input", {
       apiKey: "test-key",
-      systemPrompt: "You are helpful",
+      templatePrompt: "Fix grammar only",
     });
 
     const callArgs = mockFetch.mock.calls[0];
     const body = JSON.parse(callArgs[1].body);
 
     expect(body.messages).toHaveLength(2);
-    expect(body.messages[0]).toEqual({ role: "system", content: "You are helpful" });
+    expect(body.messages[0]).toEqual({ role: "system", content: "Fix grammar only" });
     expect(body.messages[1]).toEqual({ role: "user", content: "User input" });
   });
 
@@ -195,6 +221,72 @@ describe("callOpenRouter", () => {
     abortController.abort();
 
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
+  });
+});
+
+describe("parseTemplates", () => {
+  it("should parse valid JSON array of templates", () => {
+    const json = '[{"name":"Fix Grammar","prompt":"Fix grammar errors"}]';
+    const result = parseTemplates(json);
+
+    expect(result.templates).toHaveLength(1);
+    expect(result.templates[0]).toEqual({ name: "Fix Grammar", prompt: "Fix grammar errors" });
+    expect(result.error).toBeUndefined();
+  });
+
+  it("should parse multiple templates", () => {
+    const json = '[{"name":"A","prompt":"Prompt A"},{"name":"B","prompt":"Prompt B"}]';
+    const result = parseTemplates(json);
+
+    expect(result.templates).toHaveLength(2);
+    expect(result.templates[0].name).toBe("A");
+    expect(result.templates[1].name).toBe("B");
+  });
+
+  it("should return empty array for empty string", () => {
+    const result = parseTemplates("");
+    expect(result.templates).toHaveLength(0);
+    expect(result.error).toBeUndefined();
+  });
+
+  it("should return empty array for whitespace-only string", () => {
+    const result = parseTemplates("   ");
+    expect(result.templates).toHaveLength(0);
+    expect(result.error).toBeUndefined();
+  });
+
+  it("should return error for invalid JSON", () => {
+    const result = parseTemplates("not valid json");
+    expect(result.templates).toHaveLength(0);
+    expect(result.error).toContain("Invalid JSON");
+  });
+
+  it("should return error for non-array JSON", () => {
+    const result = parseTemplates('{"name":"Test"}');
+    expect(result.templates).toHaveLength(0);
+    expect(result.error).toBe("Templates must be a JSON array");
+  });
+
+  it("should skip invalid template objects", () => {
+    const json =
+      '[{"name":"Valid","prompt":"OK"},{"invalid":"object"},{"name":"Also Valid","prompt":"OK2"}]';
+    const result = parseTemplates(json);
+
+    expect(result.templates).toHaveLength(2);
+    expect(result.templates[0].name).toBe("Valid");
+    expect(result.templates[1].name).toBe("Also Valid");
+  });
+
+  it("should skip templates with missing name", () => {
+    const json = '[{"prompt":"No name"}]';
+    const result = parseTemplates(json);
+    expect(result.templates).toHaveLength(0);
+  });
+
+  it("should skip templates with missing prompt", () => {
+    const json = '[{"name":"No prompt"}]';
+    const result = parseTemplates(json);
+    expect(result.templates).toHaveLength(0);
   });
 });
 

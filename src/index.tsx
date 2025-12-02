@@ -8,24 +8,19 @@ import {
   showToast,
   Toast,
 } from "@raycast/api";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Debouncer } from "./debounce";
-import { callOpenRouter, isAbortError, isOpenRouterError } from "./openrouter";
+import { callOpenRouter, isAbortError, isOpenRouterError, parseTemplates } from "./openrouter";
 
 interface Preferences {
   openrouterApiKey: string;
-  model?: string;
+  model: string;
+  customModel?: string;
+  templates?: string;
 }
 
 const DEBOUNCE_MS = 400;
-
-const SYSTEM_PROMPT = `You are SenseType AI, an intelligent writing assistant. Your role is to:
-- Improve grammar and spelling
-- Enhance clarity and readability
-- Fix punctuation
-- Maintain the original meaning and tone
-
-Return ONLY the improved text without explanations or comments.`;
+const NONE_TEMPLATE_VALUE = "__none__";
 
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
@@ -33,13 +28,55 @@ export default function Command() {
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [lastGoodOutput, setLastGoodOutput] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
 
   // Refs for managing async state
   const abortControllerRef = useRef<AbortController | null>(null);
-  const debouncerRef = useRef<Debouncer<(text: string) => void> | null>(null);
+  const debouncerRef = useRef<Debouncer<(text: string, template: string) => void> | null>(null);
+
+  // Parse templates from preferences once
+  const { templates, templateError } = useMemo(() => {
+    const result = parseTemplates(preferences.templates || "");
+    return { templates: result.templates, templateError: result.error };
+  }, [preferences.templates]);
+
+  // Show template parse error on mount
+  useEffect(() => {
+    if (templateError) {
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Template Parse Error",
+        message: templateError,
+      });
+    }
+  }, [templateError]);
+
+  // Set default template (first one, or __none__ if no templates)
+  useEffect(() => {
+    if (!selectedTemplate) {
+      setSelectedTemplate(templates.length > 0 ? templates[0].name : NONE_TEMPLATE_VALUE);
+    }
+  }, [templates, selectedTemplate]);
+
+  // Get effective model (customModel overrides dropdown)
+  const effectiveModel = useMemo(() => {
+    return preferences.customModel?.trim() || preferences.model;
+  }, [preferences.customModel, preferences.model]);
+
+  // Get current template prompt
+  const getTemplatePrompt = useCallback(
+    (templateName: string): string | undefined => {
+      if (templateName === NONE_TEMPLATE_VALUE) {
+        return undefined;
+      }
+      const template = templates.find((t) => t.name === templateName);
+      return template?.prompt;
+    },
+    [templates]
+  );
 
   const processInput = useCallback(
-    async (text: string) => {
+    async (text: string, templateName: string) => {
       // Cancel any in-flight request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -59,9 +96,9 @@ export default function Command() {
       try {
         const response = await callOpenRouter(text, {
           apiKey: preferences.openrouterApiKey,
-          model: preferences.model,
+          model: effectiveModel,
           signal: abortController.signal,
-          systemPrompt: SYSTEM_PROMPT,
+          templatePrompt: getTemplatePrompt(templateName),
         });
 
         // Only update if this request wasn't aborted
@@ -97,7 +134,7 @@ export default function Command() {
         setIsLoading(false);
       }
     },
-    [preferences.openrouterApiKey, preferences.model, lastGoodOutput]
+    [preferences.openrouterApiKey, effectiveModel, getTemplatePrompt, lastGoodOutput]
   );
 
   // Initialize debouncer
@@ -109,10 +146,24 @@ export default function Command() {
     };
   }, [processInput]);
 
-  const handleInputChange = useCallback((text: string) => {
-    setInput(text);
-    debouncerRef.current?.call(text);
-  }, []);
+  const handleInputChange = useCallback(
+    (text: string) => {
+      setInput(text);
+      debouncerRef.current?.call(text, selectedTemplate);
+    },
+    [selectedTemplate]
+  );
+
+  const handleTemplateChange = useCallback(
+    (value: string) => {
+      setSelectedTemplate(value);
+      // Re-process with new template if there's input
+      if (input.trim()) {
+        debouncerRef.current?.call(input, value);
+      }
+    },
+    [input]
+  );
 
   const copyAndExit = useCallback(async () => {
     const textToCopy = output || lastGoodOutput;
@@ -139,9 +190,9 @@ export default function Command() {
 
   const regenerate = useCallback(() => {
     if (input.trim()) {
-      processInput(input);
+      processInput(input, selectedTemplate);
     }
-  }, [input, processInput]);
+  }, [input, selectedTemplate, processInput]);
 
   // Copy on exit (when component unmounts with output)
   useEffect(() => {
@@ -176,6 +227,21 @@ export default function Command() {
         </ActionPanel>
       }
     >
+      <Form.Dropdown
+        id="template"
+        title="Template"
+        value={selectedTemplate}
+        onChange={handleTemplateChange}
+      >
+        {templates.map((t) => (
+          <Form.Dropdown.Item key={t.name} value={t.name} title={t.name} />
+        ))}
+        <Form.Dropdown.Item
+          key={NONE_TEMPLATE_VALUE}
+          value={NONE_TEMPLATE_VALUE}
+          title="None (Default)"
+        />
+      </Form.Dropdown>
       <Form.TextArea
         id="input"
         title="Input"
@@ -187,10 +253,11 @@ export default function Command() {
       <Form.Separator />
       <Form.TextArea
         id="output"
-        title="Output"
-        placeholder="Start typing above..."
+        title="Output (read-only)"
+        placeholder="Transformed text will appear here..."
         value={output || (isLoading ? "Processing..." : "")}
         onChange={() => {}}
+        info="This field is read-only. Use Cmd+C to copy."
       />
     </Form>
   );
