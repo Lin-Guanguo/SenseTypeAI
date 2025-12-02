@@ -39,40 +39,40 @@ export interface OpenRouterOptions {
 }
 
 /**
- * Template definition for prompt templates
+ * Prompt definition
  */
-export interface Template {
+export interface Prompt {
   name: string;
   prompt: string;
 }
 
 /**
- * Parse templates JSON string into Template array.
+ * Parse prompts JSON string into Prompt array.
  * Returns empty array on parse error.
  */
-export function parseTemplates(json: string): { templates: Template[]; error?: string } {
+export function parsePrompts(json: string): { prompts: Prompt[]; error?: string } {
   if (!json || !json.trim()) {
-    return { templates: [] };
+    return { prompts: [] };
   }
 
   try {
     const parsed = JSON.parse(json);
 
     if (!Array.isArray(parsed)) {
-      return { templates: [], error: "Templates must be a JSON array" };
+      return { prompts: [], error: "Prompts must be a JSON array" };
     }
 
-    const templates: Template[] = [];
+    const prompts: Prompt[] = [];
     for (const item of parsed) {
       if (typeof item.name === "string" && typeof item.prompt === "string") {
-        templates.push({ name: item.name, prompt: item.prompt });
+        prompts.push({ name: item.name, prompt: item.prompt });
       }
     }
 
-    return { templates };
+    return { prompts };
   } catch (e) {
     return {
-      templates: [],
+      prompts: [],
       error: `Invalid JSON: ${e instanceof Error ? e.message : "parse error"}`,
     };
   }

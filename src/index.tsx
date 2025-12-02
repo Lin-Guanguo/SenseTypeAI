@@ -10,17 +10,16 @@ import {
 } from "@raycast/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Debouncer } from "./debounce";
-import { callOpenRouter, isAbortError, isOpenRouterError, parseTemplates } from "./openrouter";
+import { callOpenRouter, isAbortError, isOpenRouterError, parsePrompts, Prompt } from "./openrouter";
+import defaultPrompts from "./prompts.json";
 
 interface Preferences {
   openrouterApiKey: string;
   model: string;
-  customModel?: string;
-  templates?: string;
+  prompts?: string;
 }
 
 const DEBOUNCE_MS = 400;
-const NONE_TEMPLATE_VALUE = "__none__";
 
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
@@ -28,55 +27,57 @@ export default function Command() {
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [lastGoodOutput, setLastGoodOutput] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [selectedPrompt, setSelectedPrompt] = useState<string>("");
 
   // Refs for managing async state
   const abortControllerRef = useRef<AbortController | null>(null);
-  const debouncerRef = useRef<Debouncer<(text: string, template: string) => void> | null>(null);
+  const debouncerRef = useRef<Debouncer<(text: string, promptName: string) => void> | null>(null);
 
-  // Parse templates from preferences once
-  const { templates, templateError } = useMemo(() => {
-    const result = parseTemplates(preferences.templates || "");
-    return { templates: result.templates, templateError: result.error };
-  }, [preferences.templates]);
+  // Parse prompts: user prompts are added to defaults
+  const { prompts, promptError } = useMemo(() => {
+    const basePrompts = defaultPrompts as Prompt[];
+    if (preferences.prompts?.trim()) {
+      const result = parsePrompts(preferences.prompts);
+      // Merge: user prompts first, then defaults (skip duplicates by name)
+      const userNames = new Set(result.prompts.map((p) => p.name));
+      const filteredDefaults = basePrompts.filter((p) => !userNames.has(p.name));
+      return { prompts: [...result.prompts, ...filteredDefaults], promptError: result.error };
+    }
+    return { prompts: basePrompts, promptError: undefined };
+  }, [preferences.prompts]);
 
-  // Show template parse error on mount
+  // Show prompt parse error on mount
   useEffect(() => {
-    if (templateError) {
+    if (promptError) {
       showToast({
         style: Toast.Style.Failure,
-        title: "Template Parse Error",
-        message: templateError,
+        title: "Prompt Parse Error",
+        message: promptError,
       });
     }
-  }, [templateError]);
+  }, [promptError]);
 
-  // Set default template (first one, or __none__ if no templates)
+  // Set default prompt (first one)
   useEffect(() => {
-    if (!selectedTemplate) {
-      setSelectedTemplate(templates.length > 0 ? templates[0].name : NONE_TEMPLATE_VALUE);
+    if (!selectedPrompt && prompts.length > 0) {
+      setSelectedPrompt(prompts[0].name);
     }
-  }, [templates, selectedTemplate]);
+  }, [prompts, selectedPrompt]);
 
-  // Get effective model (customModel overrides dropdown)
-  const effectiveModel = useMemo(() => {
-    return preferences.customModel?.trim() || preferences.model;
-  }, [preferences.customModel, preferences.model]);
+  // Get model from preferences
+  const model = preferences.model || "google/gemini-2.5-flash";
 
-  // Get current template prompt
-  const getTemplatePrompt = useCallback(
-    (templateName: string): string | undefined => {
-      if (templateName === NONE_TEMPLATE_VALUE) {
-        return undefined;
-      }
-      const template = templates.find((t) => t.name === templateName);
-      return template?.prompt;
+  // Get current prompt content
+  const getPromptContent = useCallback(
+    (promptName: string): string | undefined => {
+      const prompt = prompts.find((p) => p.name === promptName);
+      return prompt?.prompt;
     },
-    [templates]
+    [prompts]
   );
 
   const processInput = useCallback(
-    async (text: string, templateName: string) => {
+    async (text: string, promptName: string) => {
       // Cancel any in-flight request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -96,9 +97,9 @@ export default function Command() {
       try {
         const response = await callOpenRouter(text, {
           apiKey: preferences.openrouterApiKey,
-          model: effectiveModel,
+          model,
           signal: abortController.signal,
-          templatePrompt: getTemplatePrompt(templateName),
+          templatePrompt: getPromptContent(promptName),
         });
 
         // Only update if this request wasn't aborted
@@ -134,7 +135,7 @@ export default function Command() {
         setIsLoading(false);
       }
     },
-    [preferences.openrouterApiKey, effectiveModel, getTemplatePrompt, lastGoodOutput]
+    [preferences.openrouterApiKey, model, getPromptContent, lastGoodOutput]
   );
 
   // Initialize debouncer
@@ -149,15 +150,15 @@ export default function Command() {
   const handleInputChange = useCallback(
     (text: string) => {
       setInput(text);
-      debouncerRef.current?.call(text, selectedTemplate);
+      debouncerRef.current?.call(text, selectedPrompt);
     },
-    [selectedTemplate]
+    [selectedPrompt]
   );
 
-  const handleTemplateChange = useCallback(
+  const handlePromptChange = useCallback(
     (value: string) => {
-      setSelectedTemplate(value);
-      // Re-process with new template if there's input
+      setSelectedPrompt(value);
+      // Re-process with new prompt if there's input
       if (input.trim()) {
         debouncerRef.current?.call(input, value);
       }
@@ -190,9 +191,9 @@ export default function Command() {
 
   const regenerate = useCallback(() => {
     if (input.trim()) {
-      processInput(input, selectedTemplate);
+      processInput(input, selectedPrompt);
     }
-  }, [input, selectedTemplate, processInput]);
+  }, [input, selectedPrompt, processInput]);
 
   // Copy on exit (when component unmounts with output)
   useEffect(() => {
@@ -228,19 +229,14 @@ export default function Command() {
       }
     >
       <Form.Dropdown
-        id="template"
-        title="Template"
-        value={selectedTemplate}
-        onChange={handleTemplateChange}
+        id="prompt"
+        title="Prompt"
+        value={selectedPrompt}
+        onChange={handlePromptChange}
       >
-        {templates.map((t) => (
-          <Form.Dropdown.Item key={t.name} value={t.name} title={t.name} />
+        {prompts.map((p) => (
+          <Form.Dropdown.Item key={p.name} value={p.name} title={p.name} />
         ))}
-        <Form.Dropdown.Item
-          key={NONE_TEMPLATE_VALUE}
-          value={NONE_TEMPLATE_VALUE}
-          title="None (Default)"
-        />
       </Form.Dropdown>
       <Form.TextArea
         id="input"
