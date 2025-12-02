@@ -2,14 +2,13 @@ import {
   Action,
   ActionPanel,
   Clipboard,
+  closeMainWindow,
   Form,
   getPreferenceValues,
-  popToRoot,
   showToast,
   Toast,
 } from "@raycast/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Debouncer } from "./debounce";
 import { callOpenRouter, isAbortError, isOpenRouterError, parsePrompts, Prompt } from "./openrouter";
 import defaultPrompts from "./prompts.json";
 
@@ -18,8 +17,6 @@ interface Preferences {
   model: string;
   prompts?: string;
 }
-
-const DEBOUNCE_MS = 400;
 
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
@@ -31,7 +28,7 @@ export default function Command() {
 
   // Refs for managing async state
   const abortControllerRef = useRef<AbortController | null>(null);
-  const debouncerRef = useRef<Debouncer<(text: string, promptName: string) => void> | null>(null);
+  const lastProcessedTextRef = useRef<string>("");
 
   // Parse prompts: user prompts are added to defaults
   const { prompts, promptError } = useMemo(() => {
@@ -138,44 +135,47 @@ export default function Command() {
     [preferences.openrouterApiKey, model, getPromptContent, lastGoodOutput]
   );
 
-  // Initialize debouncer
+  // Cleanup on unmount
   useEffect(() => {
-    debouncerRef.current = new Debouncer(processInput, DEBOUNCE_MS);
     return () => {
-      debouncerRef.current?.cancel();
       abortControllerRef.current?.abort();
     };
-  }, [processInput]);
+  }, []);
 
   const handleInputChange = useCallback(
     (text: string) => {
       setInput(text);
-      debouncerRef.current?.call(text, selectedPrompt);
-    },
-    [selectedPrompt]
-  );
-
-  const handlePromptChange = useCallback(
-    (value: string) => {
-      setSelectedPrompt(value);
-      // Re-process with new prompt if there's input
-      if (input.trim()) {
-        debouncerRef.current?.call(input, value);
+      // Detect Enter key by checking for new newline at end
+      if (text.endsWith("\n") && !input.endsWith("\n")) {
+        const trimmedText = text.trim();
+        // Only process if text changed after trim
+        if (trimmedText && trimmedText !== lastProcessedTextRef.current) {
+          lastProcessedTextRef.current = trimmedText;
+          processInput(trimmedText, selectedPrompt);
+        }
       }
     },
-    [input]
+    [input, selectedPrompt, processInput]
   );
+
+  const handlePromptChange = useCallback((value: string) => {
+    setSelectedPrompt(value);
+  }, []);
+
+  // Enter key - trigger processing
+  const handleSubmit = useCallback(() => {
+    if (input.trim()) {
+      processInput(input, selectedPrompt);
+    }
+  }, [input, selectedPrompt, processInput]);
 
   const copyAndExit = useCallback(async () => {
     const textToCopy = output || lastGoodOutput;
     if (textToCopy) {
       await Clipboard.copy(textToCopy);
-      await showToast({
-        style: Toast.Style.Success,
-        title: "Copied to clipboard",
-      });
+      await Clipboard.paste(textToCopy);
     }
-    await popToRoot();
+    await closeMainWindow();
   }, [output, lastGoodOutput]);
 
   const copyOutput = useCallback(async () => {
@@ -188,12 +188,6 @@ export default function Command() {
       });
     }
   }, [output, lastGoodOutput]);
-
-  const regenerate = useCallback(() => {
-    if (input.trim()) {
-      processInput(input, selectedPrompt);
-    }
-  }, [input, selectedPrompt, processInput]);
 
   // Copy on exit (when component unmounts with output)
   useEffect(() => {
@@ -211,19 +205,18 @@ export default function Command() {
       actions={
         <ActionPanel>
           <Action
-            title="Copy and Exit"
+            title="Copy, Paste and Exit"
             onAction={copyAndExit}
             shortcut={{ modifiers: ["cmd"], key: "return" }}
+          />
+          <Action
+            title="Process"
+            onAction={handleSubmit}
           />
           <Action
             title="Copy Output"
             onAction={copyOutput}
             shortcut={{ modifiers: ["cmd"], key: "c" }}
-          />
-          <Action
-            title="Regenerate"
-            onAction={regenerate}
-            shortcut={{ modifiers: ["cmd"], key: "r" }}
           />
         </ActionPanel>
       }
@@ -241,7 +234,7 @@ export default function Command() {
       <Form.TextArea
         id="input"
         title="Input"
-        placeholder="Type or paste your text here..."
+        placeholder="Enter to process, Cmd+Enter to copy and exit"
         value={input}
         onChange={handleInputChange}
         autoFocus
@@ -249,11 +242,10 @@ export default function Command() {
       <Form.Separator />
       <Form.TextArea
         id="output"
-        title="Output (read-only)"
-        placeholder="Transformed text will appear here..."
+        title="Output"
+        placeholder="Result will appear here..."
         value={output || (isLoading ? "Processing..." : "")}
         onChange={() => {}}
-        info="This field is read-only. Use Cmd+C to copy."
       />
     </Form>
   );
