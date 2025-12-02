@@ -78,11 +78,6 @@ export function parsePrompts(json: string): { prompts: Prompt[]; error?: string 
   }
 }
 
-/**
- * Default prompt when no template is selected
- */
-export const DEFAULT_PROMPT =
-  "You are SenseType AI. Improve grammar, spelling, clarity, and punctuation. Maintain original meaning and tone. Return ONLY the improved text.";
 
 interface OpenRouterAPIResponse {
   id: string;
@@ -137,8 +132,9 @@ export async function callOpenRouter(
 
   const messages: ChatMessage[] = [];
 
-  const effectivePrompt = templatePrompt?.trim() || DEFAULT_PROMPT;
-  messages.push({ role: "system", content: effectivePrompt });
+  if (templatePrompt?.trim()) {
+    messages.push({ role: "system", content: templatePrompt.trim() });
+  }
 
   messages.push({ role: "user", content: input });
 

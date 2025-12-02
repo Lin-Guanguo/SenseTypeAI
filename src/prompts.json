@@ -1,15 +1,23 @@
 [
   {
+    "name": "Type English",
+    "prompt": "Input may be English, Chinese, pinyin, misspellings, or jumbled order. Infer intent, keep idea order, and return one clear English translation only."
+  },
+  {
+    "name": "Type Chinese",
+    "prompt": "Input may be English, Chinese, pinyin, misspellings, or jumbled order. Infer intent, keep idea order, and return one clear Chinese translation only."
+  },
+  {
     "name": "Improve Writing",
-    "prompt": "You are SenseType AI. Improve grammar, spelling, clarity, and punctuation. Maintain original meaning and tone. Return ONLY the improved text."
+    "prompt": "Improve grammar, spelling, clarity, and punctuation. Keep meaning and tone. Return only the improved text."
   },
   {
     "name": "Fix Grammar",
-    "prompt": "Fix grammar and spelling errors only. Return only the corrected text."
+    "prompt": "Fix grammar and spelling errors only. Do not change style or meaning. Return only the corrected text."
   },
   {
     "name": "Make Concise",
-    "prompt": "Make this text more concise while keeping the meaning. Return only the improved text."
+    "prompt": "Make the text more concise while keeping the meaning. Return only the concise text."
   },
   {
     "name": "Make Formal",
@@ -18,13 +26,5 @@
   {
     "name": "Make Casual",
     "prompt": "Rewrite in a casual, friendly tone. Return only the rewritten text."
-  },
-  {
-    "name": "Translate to English",
-    "prompt": "Translate the following text to English. Return only the translation."
-  },
-  {
-    "name": "Translate to Chinese",
-    "prompt": "Translate the following text to Chinese. Return only the translation."
   }
 ]
