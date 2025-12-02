@@ -28,7 +28,7 @@
       "title": "API Base URL",
       "description": "OpenAI-compatible API endpoint",
       "type": "textfield",
-      "required": false,
+      "required": true,
       "default": "https://openrouter.ai/api/v1"
     },
     {
