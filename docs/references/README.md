@@ -1,3 +1,5 @@
+Last Updated: 2025-12-02
+
 # 📚 SenseType AI — References & Resources
 
 This directory contains detailed summaries and architectural analysis of external resources relevant to SenseType AI.
@@ -15,6 +17,8 @@ This directory contains detailed summaries and architectural analysis of externa
     *   *Guide to `useExec` and `usePromise` hooks. The modern replacement for raw `child_process`.*
 *   [**Advanced Development Tips**](./advanced-tips.md)
     *   *Internal guide on Performance (Spawn vs Daemon) and Debugging techniques.*
+*   [**OpenRouter Quickstart**](./openrouter-quickstart.md)
+    *   *Base URL, required headers, env key handling, and chat completion body schema.*
 
 ## 🌍 **Codebase Examples (GitHub)**
 
