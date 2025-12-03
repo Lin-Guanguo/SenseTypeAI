@@ -22,12 +22,28 @@ type ExtensionPreferences = {
 declare type Preferences = ExtensionPreferences
 
 declare namespace Preferences {
-  /** Preferences accessible in the `index` command */
-  export type Index = ExtensionPreferences & {}
+  /** Preferences accessible in the `deep` command */
+  export type Deep = ExtensionPreferences & {}
+  /** Preferences accessible in the `quick` command */
+  export type Quick = ExtensionPreferences & {}
+  /** Preferences accessible in the `quick-type-english` command */
+  export type QuickTypeEnglish = ExtensionPreferences & {}
+  /** Preferences accessible in the `quick-type-chinese` command */
+  export type QuickTypeChinese = ExtensionPreferences & {}
+  /** Preferences accessible in the `quick-improve-writing` command */
+  export type QuickImproveWriting = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
-  /** Arguments passed to the `index` command */
-  export type Index = {}
+  /** Arguments passed to the `deep` command */
+  export type Deep = {}
+  /** Arguments passed to the `quick` command */
+  export type Quick = {}
+  /** Arguments passed to the `quick-type-english` command */
+  export type QuickTypeEnglish = {}
+  /** Arguments passed to the `quick-type-chinese` command */
+  export type QuickTypeChinese = {}
+  /** Arguments passed to the `quick-improve-writing` command */
+  export type QuickImproveWriting = {}
 }
 

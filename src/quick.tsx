@@ -3,8 +3,9 @@ import {
   ActionPanel,
   Clipboard,
   closeMainWindow,
-  Form,
+  environment,
   getPreferenceValues,
+  List,
   showToast,
   Toast,
 } from "@raycast/api";
@@ -19,24 +20,28 @@ interface Preferences {
   prompts?: string;
 }
 
-export default function Command() {
+const presetMap: Record<string, string> = {
+  "quick-type-english": "Type English",
+  "quick-type-chinese": "Type Chinese",
+  "quick-improve-writing": "Improve Writing",
+};
+
+export default function QuickSense() {
   const preferences = getPreferenceValues<Preferences>();
+  const presetPrompt = presetMap[environment.commandName];
+
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [lastGoodOutput, setLastGoodOutput] = useState("");
-  const [selectedPrompt, setSelectedPrompt] = useState<string>("");
+  const [selectedPrompt, setSelectedPrompt] = useState<string>(presetPrompt || "");
 
-  // Refs for managing async state
   const abortControllerRef = useRef<AbortController | null>(null);
-  const lastProcessedTextRef = useRef<string>("");
 
-  // Parse prompts: user prompts are added to defaults
+  // Parse prompts
   const { prompts, promptError } = useMemo(() => {
     const basePrompts = defaultPrompts as Prompt[];
     if (preferences.prompts?.trim()) {
       const result = parsePrompts(preferences.prompts);
-      // Merge: user prompts first, then defaults (skip duplicates by name)
       const userNames = new Set(result.prompts.map((p) => p.name));
       const filteredDefaults = basePrompts.filter((p) => !userNames.has(p.name));
       return { prompts: [...result.prompts, ...filteredDefaults], promptError: result.error };
@@ -44,7 +49,6 @@ export default function Command() {
     return { prompts: basePrompts, promptError: undefined };
   }, [preferences.prompts]);
 
-  // Show prompt parse error on mount
   useEffect(() => {
     if (promptError) {
       showToast({
@@ -55,17 +59,15 @@ export default function Command() {
     }
   }, [promptError]);
 
-  // Set default prompt (first one)
+  // Set default prompt if not preset
   useEffect(() => {
     if (!selectedPrompt && prompts.length > 0) {
       setSelectedPrompt(prompts[0].name);
     }
   }, [prompts, selectedPrompt]);
 
-  // Get model from preferences
   const model = preferences.model || "google/gemini-2.5-flash";
 
-  // Get current prompt content
   const getPromptContent = useCallback(
     (promptName: string): string | undefined => {
       const prompt = prompts.find((p) => p.name === promptName);
@@ -76,7 +78,6 @@ export default function Command() {
 
   const processInput = useCallback(
     async (text: string, promptName: string) => {
-      // Cancel any in-flight request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -101,23 +102,17 @@ export default function Command() {
           templatePrompt: getPromptContent(promptName),
         });
 
-        // Only update if this request wasn't aborted
         if (!abortController.signal.aborted) {
           setOutput(response.text);
-          setLastGoodOutput(response.text);
           setIsLoading(false);
         }
       } catch (error) {
-        // Ignore abort errors - they're expected when cancelling stale requests
         if (isAbortError(error)) {
           setIsLoading(false);
           return;
         }
 
-        // Log error for debugging
         console.error("OpenRouter error:", error);
-
-        // Show toast with error message
         const message = isOpenRouterError(error) ? error.message : "An unexpected error occurred";
 
         await showToast({
@@ -126,129 +121,110 @@ export default function Command() {
           message,
         });
 
-        // Keep last good output on error
-        if (lastGoodOutput) {
-          setOutput(lastGoodOutput);
-        }
-
         setIsLoading(false);
       }
     },
-    [preferences.apiKey, preferences.apiBaseUrl, model, getPromptContent, lastGoodOutput]
+    [preferences.apiKey, preferences.apiBaseUrl, model, getPromptContent]
   );
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
     };
   }, []);
 
-  const handleInputChange = useCallback(
-    (text: string) => {
-      setInput(text);
-      // Detect Enter key by checking for new newline at end
-      if (text.endsWith("\n") && !input.endsWith("\n")) {
-        const trimmedText = text.trim();
-        // Only process if text changed after trim
-        if (trimmedText && trimmedText !== lastProcessedTextRef.current) {
-          lastProcessedTextRef.current = trimmedText;
-          processInput(trimmedText, selectedPrompt);
-        }
-      }
-    },
-    [input, selectedPrompt, processInput]
-  );
+  // Auto-process when input changes (throttled by List)
+  useEffect(() => {
+    if (input.trim() && selectedPrompt) {
+      processInput(input, selectedPrompt);
+    } else {
+      setOutput("");
+    }
+  }, [input, selectedPrompt, processInput]);
 
-  const handlePromptChange = useCallback((value: string) => {
-    setSelectedPrompt(value);
-  }, []);
-
-  // Enter key - trigger processing
-  const handleSubmit = useCallback(() => {
-    if (input.trim()) {
+  const handleProcess = useCallback(() => {
+    if (input.trim() && selectedPrompt) {
       processInput(input, selectedPrompt);
     }
   }, [input, selectedPrompt, processInput]);
 
   const copyAndExit = useCallback(async () => {
-    const textToCopy = output || lastGoodOutput;
-    if (textToCopy) {
-      await Clipboard.copy(textToCopy);
-      await Clipboard.paste(textToCopy);
+    if (output) {
+      await Clipboard.copy(output);
+      await Clipboard.paste(output);
     }
     await closeMainWindow();
-  }, [output, lastGoodOutput]);
+  }, [output]);
 
   const copyOutput = useCallback(async () => {
-    const textToCopy = output || lastGoodOutput;
-    if (textToCopy) {
-      await Clipboard.copy(textToCopy);
+    if (output) {
+      await Clipboard.copy(output);
       await showToast({
         style: Toast.Style.Success,
         title: "Copied to clipboard",
       });
     }
-  }, [output, lastGoodOutput]);
+  }, [output]);
 
-  // Copy on exit (when component unmounts with output)
+  // Copy on exit
   useEffect(() => {
     return () => {
-      const textToCopy = output || lastGoodOutput;
-      if (textToCopy) {
-        Clipboard.copy(textToCopy);
+      if (output) {
+        Clipboard.copy(output);
       }
     };
-  }, [output, lastGoodOutput]);
+  }, [output]);
+
+  const markdown = output || (isLoading ? "*Processing...*" : "*Type to start*");
+
+  // Filter prompts: show only preset prompt if preset, otherwise show all
+  const displayPrompts = presetPrompt
+    ? prompts.filter((p) => p.name === presetPrompt)
+    : prompts;
 
   return (
-    <Form
+    <List
       isLoading={isLoading}
-      actions={
-        <ActionPanel>
-          <Action
-            title="Copy, Paste and Exit"
-            onAction={copyAndExit}
-            shortcut={{ modifiers: ["cmd"], key: "return" }}
-          />
-          <Action
-            title="Process"
-            onAction={handleSubmit}
-          />
-          <Action
-            title="Copy Output"
-            onAction={copyOutput}
-            shortcut={{ modifiers: ["cmd"], key: "c" }}
-          />
-        </ActionPanel>
-      }
+      onSearchTextChange={setInput}
+      searchBarPlaceholder="Type here..."
+      throttle
+      filtering={false}
+      isShowingDetail
     >
-      <Form.Dropdown
-        id="prompt"
-        title="Prompt"
-        value={selectedPrompt}
-        onChange={handlePromptChange}
-      >
-        {prompts.map((p) => (
-          <Form.Dropdown.Item key={p.name} value={p.name} title={p.name} />
-        ))}
-      </Form.Dropdown>
-      <Form.TextArea
-        id="input"
-        title="Input"
-        placeholder="Enter to process, Cmd+Enter to copy and exit"
-        value={input}
-        onChange={handleInputChange}
-        autoFocus
-      />
-      <Form.Separator />
-      <Form.TextArea
-        id="output"
-        title="Output"
-        placeholder="Result will appear here..."
-        value={output || (isLoading ? "Processing..." : "")}
-        onChange={() => {}}
-      />
-    </Form>
+      {displayPrompts.map((p) => (
+        <List.Item
+          key={p.name}
+          title={p.name}
+          detail={<List.Item.Detail markdown={selectedPrompt === p.name ? markdown : `*Select to use ${p.name}*`} />}
+          actions={
+            <ActionPanel>
+              {presetPrompt ? (
+                <Action title="Process" onAction={handleProcess} />
+              ) : (
+                <Action
+                  title="Select Prompt"
+                  onAction={() => {
+                    setSelectedPrompt(p.name);
+                    if (input.trim()) {
+                      processInput(input, p.name);
+                    }
+                  }}
+                />
+              )}
+              <Action
+                title="Copy, Paste and Exit"
+                onAction={copyAndExit}
+                shortcut={{ modifiers: ["cmd"], key: "return" }}
+              />
+              <Action
+                title="Copy Output"
+                onAction={copyOutput}
+                shortcut={{ modifiers: ["cmd"], key: "c" }}
+              />
+            </ActionPanel>
+          }
+        />
+      ))}
+    </List>
   );
 }

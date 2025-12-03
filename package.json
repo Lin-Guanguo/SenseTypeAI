@@ -8,10 +8,35 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "index",
-      "title": "SenseType AI",
-      "subtitle": "Transform your text",
-      "description": "AI-powered text transformation with real-time feedback",
+      "name": "deep",
+      "title": "DeepSense",
+      "subtitle": "Multi-line input",
+      "description": "Multi-line input for longer text",
+      "mode": "view"
+    },
+    {
+      "name": "quick",
+      "title": "QuickSense",
+      "subtitle": "Quick input",
+      "description": "Single-line quick input with prompt selection",
+      "mode": "view"
+    },
+    {
+      "name": "quick-type-english",
+      "title": "Type English",
+      "description": "Quick input with Type English preset",
+      "mode": "view"
+    },
+    {
+      "name": "quick-type-chinese",
+      "title": "Type Chinese",
+      "description": "Quick input with Type Chinese preset",
+      "mode": "view"
+    },
+    {
+      "name": "quick-improve-writing",
+      "title": "Improve Writing",
+      "description": "Quick input with Improve Writing preset",
       "mode": "view"
     }
   ],
