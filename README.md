@@ -43,7 +43,7 @@ In Raycast preferences:
 
 - **API Key**: Your API key (required)
 - **API Base URL**: OpenAI-compatible endpoint (default: `https://openrouter.ai/api/v1`)
-- **Model**: Model ID (default: `google/gemini-2.5-flash`)
+- **Model**: Model ID (default: `google/gemini-2.5-flash-lite`)
 - **Custom Prompts**: JSON array to add custom prompts
 
 ### Custom Prompts Example

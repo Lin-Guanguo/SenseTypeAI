@@ -4,7 +4,7 @@
  */
 
 const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 
 export interface OpenRouterMeta {
   model: string;

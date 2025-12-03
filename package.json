@@ -59,10 +59,10 @@
     {
       "name": "model",
       "title": "Model",
-      "description": "Model ID (e.g. google/gemini-2.5-flash, gpt-4o)",
+      "description": "Model ID (e.g. google/gemini-2.5-flash-lite, gpt-4o)",
       "type": "textfield",
       "required": false,
-      "default": "google/gemini-2.5-flash"
+      "default": "google/gemini-2.5-flash-lite"
     },
     {
       "name": "prompts",

@@ -63,7 +63,7 @@ export default function Command() {
   }, [prompts, selectedPrompt]);
 
   // Get model from preferences
-  const model = preferences.model || "google/gemini-2.5-flash";
+  const model = preferences.model;
 
   // Get current prompt content
   const getPromptContent = useCallback(

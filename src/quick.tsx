@@ -66,7 +66,7 @@ export default function QuickSense() {
     }
   }, [prompts, selectedPrompt]);
 
-  const model = preferences.model || "google/gemini-2.5-flash";
+  const model = preferences.model;
 
   const getPromptContent = useCallback(
     (promptName: string): string | undefined => {

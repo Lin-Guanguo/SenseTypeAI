@@ -12,7 +12,7 @@ type ExtensionPreferences = {
   "apiKey": string,
   /** API Base URL - OpenAI-compatible API endpoint */
   "apiBaseUrl": string,
-  /** Model - Model ID (e.g. google/gemini-2.5-flash, gpt-4o) */
+  /** Model - Model ID (e.g. google/gemini-2.5-flash-lite, gpt-4o) */
   "model": string,
   /** Custom Prompts (JSON) - Add custom prompts (shown before defaults). JSON array: [{"name": "Name", "prompt": "..."}] */
   "prompts": string
