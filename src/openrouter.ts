@@ -143,6 +143,8 @@ export async function callOpenRouter(
   // Remove trailing slash from baseUrl if present
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
 
+  console.log(`[API] calling ${normalizedBaseUrl} model=${model}`);
+
   const response = await fetch(`${normalizedBaseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -163,8 +165,11 @@ export async function callOpenRouter(
   }
 
   const data = (await response.json()) as OpenRouterAPIResponse;
+  const result = parseResponse(data, model);
 
-  return parseResponse(data, model);
+  console.log(`[API] input="${input}" output="${result.text}"`);
+
+  return result;
 }
 
 function parseResponse(data: OpenRouterAPIResponse, requestedModel: string): OpenRouterResponse {

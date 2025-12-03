@@ -133,15 +133,6 @@ export default function QuickSense() {
     };
   }, []);
 
-  // Auto-process when input changes (throttled by List)
-  useEffect(() => {
-    if (input.trim() && selectedPrompt) {
-      processInput(input, selectedPrompt);
-    } else {
-      setOutput("");
-    }
-  }, [input, selectedPrompt, processInput]);
-
   const handleProcess = useCallback(() => {
     if (input.trim() && selectedPrompt) {
       processInput(input, selectedPrompt);
@@ -186,8 +177,7 @@ export default function QuickSense() {
     <List
       isLoading={isLoading}
       onSearchTextChange={setInput}
-      searchBarPlaceholder="Type here..."
-      throttle
+      searchBarPlaceholder="Type here, Enter to process..."
       filtering={false}
       isShowingDetail
     >

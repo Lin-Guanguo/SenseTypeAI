@@ -1,4 +1,4 @@
-Last Updated: 2025-12-02
+Last Updated: 2025-12-03
 
 # SenseType AI
 
@@ -6,85 +6,68 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 
 ## Features
 
-- Real-time text transformation with debounced API calls (400ms)
-- Grammar, spelling, and clarity improvements
-- Automatic copy-to-clipboard on exit
-- Stale request cancellation for responsive UX
-- Error handling with user-friendly toasts
+- **Two input modes**: DeepSense (multi-line) and QuickSense (single-line)
+- **Multiple prompts**: Type English, Type Chinese, Improve Writing, Fix Grammar, etc.
+- **Real-time transformation**: Auto-triggered with throttling in QuickSense
+- **Custom prompts**: Add your own prompts via JSON in preferences
+- **Any OpenAI-compatible API**: Works with OpenRouter, OpenAI, local LLMs, etc.
+- **Automatic copy-to-clipboard** on exit
 
-## Installation
+## Commands
 
-```bash
-npm install
+| Command | Description |
+|---------|-------------|
+| **DeepSense** | Multi-line input for longer text (Form UI) |
+| **QuickSense** | Single-line quick input with prompt selection (List UI) |
+| **Type English** | Quick input preset for English typing |
+| **Type Chinese** | Quick input preset for Chinese typing |
+| **Improve Writing** | Quick input preset for improving writing |
+
+## Usage
+
+### DeepSense (Multi-line)
+1. Search "DeepSense" in Raycast
+2. Select a prompt from dropdown
+3. Type or paste text, press `Enter` to process
+4. `Cmd+Enter` to copy, paste and exit
+
+### QuickSense (Single-line)
+1. Search "QuickSense" or preset commands (e.g., "Type English")
+2. Type in search bar - auto processes with throttling
+3. `Enter` to select prompt (in QuickSense)
+4. `Cmd+Enter` to copy, paste and exit
+
+## Configuration
+
+In Raycast preferences:
+
+- **API Key**: Your API key (required)
+- **API Base URL**: OpenAI-compatible endpoint (default: `https://openrouter.ai/api/v1`)
+- **Model**: Model ID (default: `google/gemini-2.5-flash`)
+- **Custom Prompts**: JSON array to add custom prompts
+
+### Custom Prompts Example
+```json
+[{"name": "Translate", "prompt": "Translate to English"}]
 ```
 
 ## Development
 
 ```bash
-# Start Raycast development mode
-npm run dev
-
-# Build the extension
-npm run build
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint
+npm install
+npm run dev    # Start development
+npm run build  # Build extension
+npm test       # Run tests
 ```
-
-## Configuration
-
-### API Key
-
-Set your OpenRouter API key in Raycast preferences (stored securely in Keychain).
-
-For local development, you can also use a `.env` file:
-```
-OPENROUTER_API_KEY=sk-xxx
-```
-
-### Model
-
-Default model: `google/gemini-2.5-flash`
-
-Configure in Raycast preferences or `.env`:
-```
-OPENROUTER_MODEL=google/gemini-2.5-flash
-```
-
-## Usage
-
-1. Open Raycast and search for "SenseType AI"
-2. Type or paste text in the input field
-3. Wait for AI transformation (auto-triggered after 400ms pause)
-4. Use keyboard shortcuts:
-   - `Cmd+Return` - Copy and exit
-   - `Cmd+C` - Copy output
-   - `Cmd+R` - Regenerate
 
 ## Project Structure
 
 ```
 src/
-├── index.tsx          # Main UI component
-├── openrouter.ts      # OpenRouter API client
-├── debounce.ts        # Debounce utility
+├── deep.tsx           # DeepSense (multi-line Form UI)
+├── quick.tsx          # QuickSense (single-line List UI)
+├── quick-*.tsx        # Symlinks for preset commands
+├── openrouter.ts      # API client
+├── prompts.json       # Default prompts
 └── __tests__/         # Unit tests
-assets/
-└── extension-icon.png # Extension icon
 ```
-
-## Publishing
-
-Before publishing to Raycast Store:
-1. Create a Raycast account
-2. Update `author` in `package.json` to your Raycast username
-3. Run `npm run publish`
-
-## Documentation
-
-- `docs/start.md`: Product vision and architecture
-- `docs/execution-plan.md`: Implementation plan and milestones
-- `docs/references/`: API and framework references
