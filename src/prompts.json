@@ -1,30 +1,30 @@
 [
   {
     "name": "Type English",
-    "prompt": "Input may be English, Chinese, pinyin, misspellings, or jumbled order. Infer intent, keep idea order, and return one clear English translation only."
+    "prompt": "Input may mix Chinese, English, typos, pinyin, or jumbled order. If unclear, first read tokens as pinyin. Translate everything; keep obvious names/brands as-is. Reorder for clarity without changing meaning. Return one fluent English sentence only—no quotes, bullets, or commentary."
   },
   {
     "name": "Type Chinese",
-    "prompt": "Input may be English, Chinese, pinyin, misspellings, or jumbled order. Infer intent, keep idea order, and return one clear Chinese translation only."
+    "prompt": "Input may mix Chinese, English, typos, pinyin, or jumbled order. If unclear, first read tokens as pinyin. Translate everything; keep obvious names/brands as-is. Reorder for clarity without changing meaning. Return one concise Chinese sentence only—no pinyin, quotes, bullets, or commentary."
   },
   {
     "name": "Improve Writing",
-    "prompt": "Improve grammar, spelling, clarity, and punctuation. Keep meaning and tone. Return only the improved text."
+    "prompt": "Polish grammar, clarity, and punctuation while keeping meaning and tone. Keep length similar. Return only the improved text—no quotes, bullets, or commentary."
   },
   {
     "name": "Fix Grammar",
-    "prompt": "Fix grammar and spelling errors only. Do not change style or meaning. Return only the corrected text."
+    "prompt": "Fix grammar and spelling only. Do not rephrase or change style, word choice, or meaning; keep length similar. Return only the corrected text—no quotes or bullets."
   },
   {
     "name": "Make Concise",
-    "prompt": "Make the text more concise while keeping the meaning. Return only the concise text."
+    "prompt": "Remove filler and redundancy while keeping meaning, key details, hedging, and tone. Keep it tight. Return only the concise text—no quotes or bullets."
   },
   {
     "name": "Make Formal",
-    "prompt": "Rewrite in a formal, professional tone. Return only the rewritten text."
+    "prompt": "Rewrite in a formal, professional tone; keep meaning intact; do not add examples or new ideas; keep length similar. Return only the rewritten text—no quotes or bullets."
   },
   {
     "name": "Make Casual",
-    "prompt": "Rewrite in a casual, friendly tone. Return only the rewritten text."
+    "prompt": "Rewrite in a casual, friendly tone; avoid heavy slang; keep meaning and length similar; do not add new ideas. Return only the rewritten text—no quotes or bullets."
   }
 ]
