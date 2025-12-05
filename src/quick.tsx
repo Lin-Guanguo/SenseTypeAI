@@ -41,6 +41,7 @@ export default function QuickSense() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<string>(presetPrompt || "");
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardItem[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<string | undefined>(undefined);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -160,23 +161,22 @@ export default function QuickSense() {
   }, []);
 
   const handleProcess = useCallback(() => {
+    if (isLoading) return; // Throttle: skip if already processing
     if (input.trim() && selectedPrompt) {
       processInput(input, selectedPrompt);
     }
-  }, [input, selectedPrompt, processInput]);
+  }, [input, selectedPrompt, processInput, isLoading]);
 
   const copyAndExit = useCallback(async () => {
     if (!output) {
       // No output yet, trigger process instead
-      if (input.trim() && selectedPrompt) {
-        processInput(input, selectedPrompt);
-      }
+      handleProcess();
       return;
     }
     await Clipboard.copy(output);
     await Clipboard.paste(output);
     await closeMainWindow();
-  }, [output, input, selectedPrompt, processInput]);
+  }, [output, handleProcess]);
 
   const copyOutput = useCallback(async () => {
     if (output) {
@@ -204,14 +204,17 @@ export default function QuickSense() {
     ? prompts.filter((p) => p.name === presetPrompt)
     : prompts;
 
-  // Filter clipboard history by search input
-  const filteredClipboard = useMemo(() => {
-    if (!input.trim()) return clipboardHistory;
-    const lowerInput = input.toLowerCase();
-    return clipboardHistory.filter((item) => item.text.toLowerCase().includes(lowerInput));
-  }, [clipboardHistory, input]);
 
-  // Copy clipboard item and paste
+  // Append clipboard item to input and reset selection to first item
+  const appendAndGoToFirst = useCallback((text: string) => {
+    setInput((prev) => prev + text);
+    // Reset selection to first prompt item
+    if (displayPrompts.length > 0) {
+      setSelectedItemId(`prompt-${displayPrompts[0].name}`);
+    }
+  }, [displayPrompts]);
+
+  // Paste clipboard item and exit
   const pasteClipboardItem = useCallback(async (text: string) => {
     await Clipboard.paste(text);
     await closeMainWindow();
@@ -226,14 +229,18 @@ export default function QuickSense() {
   return (
     <List
       isLoading={isLoading}
+      searchText={input}
       onSearchTextChange={setInput}
       searchBarPlaceholder="Type to translate or search clipboard..."
       filtering={false}
       isShowingDetail
+      selectedItemId={selectedItemId}
+      onSelectionChange={setSelectedItemId}
     >
       <List.Section title="Translate">
         {displayPrompts.map((p) => (
           <List.Item
+            id={`prompt-${p.name}`}
             key={p.name}
             title={p.name}
             icon={Icon.Text}
@@ -269,8 +276,9 @@ export default function QuickSense() {
         ))}
       </List.Section>
       <List.Section title="Clipboard History">
-        {filteredClipboard.map((item, index) => (
+        {clipboardHistory.map((item, index) => (
           <List.Item
+            id={`clipboard-${item.offset}`}
             key={`clipboard-${item.offset}`}
             title={truncateText(item.text)}
             subtitle={index === 0 ? "Latest" : undefined}
@@ -279,11 +287,11 @@ export default function QuickSense() {
             actions={
               <ActionPanel>
                 <Action
-                  title="Paste"
-                  onAction={() => pasteClipboardItem(item.text)}
+                  title="Append to Input"
+                  onAction={() => appendAndGoToFirst(item.text)}
                 />
                 <Action
-                  title="Copy and Paste"
+                  title="Paste and Exit"
                   onAction={() => pasteClipboardItem(item.text)}
                   shortcut={{ modifiers: ["cmd"], key: "return" }}
                 />
