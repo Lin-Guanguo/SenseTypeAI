@@ -140,12 +140,17 @@ export default function QuickSense() {
   }, [input, selectedPrompt, processInput]);
 
   const copyAndExit = useCallback(async () => {
-    if (output) {
-      await Clipboard.copy(output);
-      await Clipboard.paste(output);
+    if (!output) {
+      // No output yet, trigger process instead
+      if (input.trim() && selectedPrompt) {
+        processInput(input, selectedPrompt);
+      }
+      return;
     }
+    await Clipboard.copy(output);
+    await Clipboard.paste(output);
     await closeMainWindow();
-  }, [output]);
+  }, [output, input, selectedPrompt, processInput]);
 
   const copyOutput = useCallback(async () => {
     if (output) {
