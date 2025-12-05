@@ -5,6 +5,7 @@ import {
   closeMainWindow,
   environment,
   getPreferenceValues,
+  Icon,
   List,
   showToast,
   Toast,
@@ -12,6 +13,11 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { callOpenRouter, isAbortError, isOpenRouterError, parsePrompts, Prompt } from "./openrouter";
 import defaultPrompts from "./prompts.json";
+
+interface ClipboardItem {
+  text: string;
+  offset: number;
+}
 
 interface Preferences {
   apiKey: string;
@@ -34,8 +40,28 @@ export default function QuickSense() {
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<string>(presetPrompt || "");
+  const [clipboardHistory, setClipboardHistory] = useState<ClipboardItem[]>([]);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Load clipboard history
+  useEffect(() => {
+    async function loadClipboardHistory() {
+      const items: ClipboardItem[] = [];
+      for (let offset = 0; offset <= 5; offset++) {
+        try {
+          const text = await Clipboard.readText({ offset });
+          if (text?.trim()) {
+            items.push({ text, offset });
+          }
+        } catch {
+          // Ignore errors for individual clipboard items
+        }
+      }
+      setClipboardHistory(items);
+    }
+    loadClipboardHistory();
+  }, []);
 
   // Parse prompts
   const { prompts, promptError } = useMemo(() => {
@@ -178,48 +204,102 @@ export default function QuickSense() {
     ? prompts.filter((p) => p.name === presetPrompt)
     : prompts;
 
+  // Filter clipboard history by search input
+  const filteredClipboard = useMemo(() => {
+    if (!input.trim()) return clipboardHistory;
+    const lowerInput = input.toLowerCase();
+    return clipboardHistory.filter((item) => item.text.toLowerCase().includes(lowerInput));
+  }, [clipboardHistory, input]);
+
+  // Copy clipboard item and paste
+  const pasteClipboardItem = useCallback(async (text: string) => {
+    await Clipboard.paste(text);
+    await closeMainWindow();
+  }, []);
+
+  // Truncate text for display
+  const truncateText = (text: string, maxLength = 50) => {
+    const singleLine = text.replace(/\n/g, " ").trim();
+    return singleLine.length > maxLength ? singleLine.slice(0, maxLength) + "..." : singleLine;
+  };
+
   return (
     <List
       isLoading={isLoading}
       onSearchTextChange={setInput}
-      searchBarPlaceholder="Type here, Enter to process..."
+      searchBarPlaceholder="Type to translate or search clipboard..."
       filtering={false}
       isShowingDetail
     >
-      {displayPrompts.map((p) => (
-        <List.Item
-          key={p.name}
-          title={p.name}
-          detail={<List.Item.Detail markdown={selectedPrompt === p.name ? markdown : `*Select to use ${p.name}*`} />}
-          actions={
-            <ActionPanel>
-              {presetPrompt ? (
-                <Action title="Process" onAction={handleProcess} />
-              ) : (
+      <List.Section title="Translate">
+        {displayPrompts.map((p) => (
+          <List.Item
+            key={p.name}
+            title={p.name}
+            icon={Icon.Text}
+            detail={<List.Item.Detail markdown={selectedPrompt === p.name ? markdown : `*Select to use ${p.name}*`} />}
+            actions={
+              <ActionPanel>
+                {presetPrompt ? (
+                  <Action title="Process" onAction={handleProcess} />
+                ) : (
+                  <Action
+                    title="Select Prompt"
+                    onAction={() => {
+                      setSelectedPrompt(p.name);
+                      if (input.trim()) {
+                        processInput(input, p.name);
+                      }
+                    }}
+                  />
+                )}
                 <Action
-                  title="Select Prompt"
-                  onAction={() => {
-                    setSelectedPrompt(p.name);
-                    if (input.trim()) {
-                      processInput(input, p.name);
-                    }
-                  }}
+                  title="Copy, Paste and Exit"
+                  onAction={copyAndExit}
+                  shortcut={{ modifiers: ["cmd"], key: "return" }}
                 />
-              )}
-              <Action
-                title="Copy, Paste and Exit"
-                onAction={copyAndExit}
-                shortcut={{ modifiers: ["cmd"], key: "return" }}
-              />
-              <Action
-                title="Copy Output"
-                onAction={copyOutput}
-                shortcut={{ modifiers: ["cmd"], key: "c" }}
-              />
-            </ActionPanel>
-          }
-        />
-      ))}
+                <Action
+                  title="Copy Output"
+                  onAction={copyOutput}
+                  shortcut={{ modifiers: ["cmd"], key: "c" }}
+                />
+              </ActionPanel>
+            }
+          />
+        ))}
+      </List.Section>
+      <List.Section title="Clipboard History">
+        {filteredClipboard.map((item, index) => (
+          <List.Item
+            key={`clipboard-${item.offset}`}
+            title={truncateText(item.text)}
+            subtitle={index === 0 ? "Latest" : undefined}
+            icon={Icon.Clipboard}
+            detail={<List.Item.Detail markdown={`\`\`\`\n${item.text}\n\`\`\``} />}
+            actions={
+              <ActionPanel>
+                <Action
+                  title="Paste"
+                  onAction={() => pasteClipboardItem(item.text)}
+                />
+                <Action
+                  title="Copy and Paste"
+                  onAction={() => pasteClipboardItem(item.text)}
+                  shortcut={{ modifiers: ["cmd"], key: "return" }}
+                />
+                <Action
+                  title="Copy"
+                  onAction={async () => {
+                    await Clipboard.copy(item.text);
+                    await showToast({ style: Toast.Style.Success, title: "Copied" });
+                  }}
+                  shortcut={{ modifiers: ["cmd"], key: "c" }}
+                />
+              </ActionPanel>
+            }
+          />
+        ))}
+      </List.Section>
     </List>
   );
 }
