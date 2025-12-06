@@ -13,6 +13,12 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 - **Any OpenAI-compatible API**: Works with OpenRouter, OpenAI, local LLMs, etc.
 - **Automatic copy-to-clipboard** on exit
 
+## Screenshots
+
+| DeepSense | QuickSense |
+|-----------|------------|
+| ![DeepSense](docs/DeepSense.jpg) | ![QuickSense](docs/QuickSense.jpg) |
+
 ## Commands
 
 | Command | Description |
