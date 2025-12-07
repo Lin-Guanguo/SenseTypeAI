@@ -1,4 +1,4 @@
-Last Updated: 2025-12-03
+Last Updated: 2025-12-07
 
 # SenseType AI
 
@@ -8,7 +8,8 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 
 - **Two input modes**: DeepSense (multi-line) and QuickSense (single-line)
 - **Multiple prompts**: Type English, Type Chinese, Improve Writing, Fix Grammar, etc.
-- **Real-time transformation**: Auto-triggered with throttling in QuickSense
+- **Selected text support**: Auto-fills and processes selected text when launching QuickSense
+- **Clipboard history**: Access recent clipboard items, append to input or paste directly
 - **Custom prompts**: Add your own prompts via JSON in preferences
 - **Any OpenAI-compatible API**: Works with OpenRouter, OpenAI, local LLMs, etc.
 - **Automatic copy-to-clipboard** on exit
@@ -39,9 +40,10 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 
 ### QuickSense (Single-line)
 1. Search "QuickSense" or preset commands (e.g., "Type English")
-2. Type in search bar - auto processes with throttling
-3. `Enter` to select prompt (in QuickSense)
+2. If text is selected in another app, it auto-fills and processes immediately
+3. Type in search bar, press `Enter` to process
 4. `Cmd+Enter` to copy, paste and exit
+5. Use clipboard history section to append previous items to input
 
 ## Configuration
 

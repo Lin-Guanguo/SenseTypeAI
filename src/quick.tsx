@@ -5,6 +5,7 @@ import {
   closeMainWindow,
   environment,
   getPreferenceValues,
+  getSelectedText,
   Icon,
   List,
   showToast,
@@ -45,9 +46,24 @@ export default function QuickSense() {
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Load clipboard history
+  // Track if initial selected text has been processed
+  const initialProcessedRef = useRef(false);
+
+  // Load selected text and clipboard history on mount
   useEffect(() => {
-    async function loadClipboardHistory() {
+    async function initialize() {
+      // Try to get selected text first
+      try {
+        const selectedText = await getSelectedText();
+        if (selectedText?.trim()) {
+          setInput(selectedText);
+          initialProcessedRef.current = true;
+        }
+      } catch {
+        // No selected text, ignore
+      }
+
+      // Load clipboard history
       const items: ClipboardItem[] = [];
       for (let offset = 0; offset <= 5; offset++) {
         try {
@@ -61,7 +77,7 @@ export default function QuickSense() {
       }
       setClipboardHistory(items);
     }
-    loadClipboardHistory();
+    initialize();
   }, []);
 
   // Parse prompts
@@ -153,6 +169,14 @@ export default function QuickSense() {
     },
     [preferences.apiKey, preferences.apiBaseUrl, model, getPromptContent]
   );
+
+  // Auto-process when initial selected text is loaded and prompt is ready
+  useEffect(() => {
+    if (initialProcessedRef.current && input.trim() && selectedPrompt) {
+      initialProcessedRef.current = false; // Only trigger once
+      processInput(input, selectedPrompt);
+    }
+  }, [input, selectedPrompt, processInput]);
 
   useEffect(() => {
     return () => {
