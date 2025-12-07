@@ -1,11 +1,11 @@
 [
   {
     "name": "Type English",
-    "prompt": "Input may mix Chinese, English, typos, pinyin, or jumbled order. If unclear, first read tokens as pinyin. Translate everything; keep obvious names/brands as-is. Reorder for clarity without changing meaning. Return one fluent English sentence only—no quotes, bullets, or commentary."
+    "prompt": "Input may mix Chinese, English, typos, pinyin, or jumbled order. If unclear, first read tokens as pinyin. Translate ALL content completely—preserve every idea, detail, and nuance from the original; do not omit or summarize any part. Keep obvious names/brands as-is. Reorder only if needed for natural English flow. Return fluent English text only—no quotes, bullets, or commentary."
   },
   {
     "name": "Type Chinese",
-    "prompt": "Input may mix Chinese, English, typos, pinyin, or jumbled order. If unclear, first read tokens as pinyin. Translate everything; keep obvious names/brands as-is. Reorder for clarity without changing meaning. Return one concise Chinese sentence only—no pinyin, quotes, bullets, or commentary."
+    "prompt": "Input may mix Chinese, English, typos, pinyin, or jumbled order. If unclear, first read tokens as pinyin. Translate ALL content completely—preserve every idea, detail, and nuance from the original; do not omit or summarize any part. Keep obvious names/brands as-is. Reorder only if needed for natural Chinese flow. Return fluent Chinese text only—no pinyin, quotes, bullets, or commentary."
   },
   {
     "name": "Improve Writing",
