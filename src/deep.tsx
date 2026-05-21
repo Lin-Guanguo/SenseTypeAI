@@ -8,9 +8,16 @@ import {
   showToast,
   Toast,
 } from "@raycast/api";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { callOpenRouter, isAbortError, isOpenRouterError, parsePrompts, Prompt } from "./openrouter";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  callOpenRouter,
+  isAbortError,
+  isOpenRouterError,
+  parsePrompts,
+  Prompt,
+} from "./openrouter";
 import defaultPrompts from "./prompts.json";
+import { useAutoProcessor } from "./useAutoProcessor";
 
 interface Preferences {
   apiKey: string;
@@ -23,13 +30,8 @@ export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [lastGoodOutput, setLastGoodOutput] = useState("");
   const [selectedPrompt, setSelectedPrompt] = useState<string>("");
-
-  // Refs for managing async state
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const lastProcessedTextRef = useRef<string>("");
 
   // Parse prompts: user prompts are added to defaults
   const { prompts, promptError } = useMemo(() => {
@@ -75,110 +77,79 @@ export default function Command() {
   );
 
   const processInput = useCallback(
-    async (text: string, promptName: string) => {
-      // Cancel any in-flight request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+    async (text: string, promptName: string, signal: AbortSignal) => {
+      const response = await callOpenRouter(text, {
+        apiKey: preferences.apiKey,
+        baseUrl: preferences.apiBaseUrl,
+        model,
+        signal,
+        templatePrompt: getPromptContent(promptName),
+      });
+      return response.text;
+    },
+    [preferences.apiKey, preferences.apiBaseUrl, model, getPromptContent]
+  );
 
-      if (!text.trim()) {
-        setOutput("");
-        setIsLoading(false);
+  const handleProcessResult = useCallback((text: string) => {
+    setOutput(text);
+    setLastGoodOutput(text);
+  }, []);
+
+  const handleProcessError = useCallback(
+    async (error: unknown) => {
+      if (isAbortError(error)) {
         return;
       }
 
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
+      console.error("OpenRouter error:", error);
+      const message = isOpenRouterError(error) ? error.message : "An unexpected error occurred";
 
-      setIsLoading(true);
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Error",
+        message,
+      });
 
-      try {
-        const response = await callOpenRouter(text, {
-          apiKey: preferences.apiKey,
-          baseUrl: preferences.apiBaseUrl,
-          model,
-          signal: abortController.signal,
-          templatePrompt: getPromptContent(promptName),
-        });
-
-        // Only update if this request wasn't aborted
-        if (!abortController.signal.aborted) {
-          setOutput(response.text);
-          setLastGoodOutput(response.text);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        // Ignore abort errors - they're expected when cancelling stale requests
-        if (isAbortError(error)) {
-          setIsLoading(false);
-          return;
-        }
-
-        // Log error for debugging
-        console.error("OpenRouter error:", error);
-
-        // Show toast with error message
-        const message = isOpenRouterError(error) ? error.message : "An unexpected error occurred";
-
-        await showToast({
-          style: Toast.Style.Failure,
-          title: "Error",
-          message,
-        });
-
-        // Keep last good output on error
-        if (lastGoodOutput) {
-          setOutput(lastGoodOutput);
-        }
-
-        setIsLoading(false);
+      if (lastGoodOutput) {
+        setOutput(lastGoodOutput);
       }
     },
-    [preferences.apiKey, preferences.apiBaseUrl, model, getPromptContent, lastGoodOutput]
+    [lastGoodOutput]
   );
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
+  const { isLoading, isOutputFresh, requestProcess } = useAutoProcessor({
+    input,
+    promptName: selectedPrompt,
+    process: processInput,
+    onResult: handleProcessResult,
+    onError: handleProcessError,
+    onReset: () => setOutput(""),
+  });
+
+  const handleInputChange = useCallback((text: string) => {
+    setInput(text);
   }, []);
-
-  const handleInputChange = useCallback(
-    (text: string) => {
-      setInput(text);
-      // Detect Enter key by checking for new newline at end
-      if (text.endsWith("\n") && !input.endsWith("\n")) {
-        const trimmedText = text.trim();
-        // Only process if text changed after trim
-        if (trimmedText && trimmedText !== lastProcessedTextRef.current) {
-          lastProcessedTextRef.current = trimmedText;
-          processInput(trimmedText, selectedPrompt);
-        }
-      }
-    },
-    [input, selectedPrompt, processInput]
-  );
 
   const handlePromptChange = useCallback((value: string) => {
     setSelectedPrompt(value);
   }, []);
 
-  // Enter key - trigger processing
+  // Manual trigger; automatic processing is handled by useAutoProcessor.
   const handleSubmit = useCallback(() => {
     if (input.trim()) {
-      processInput(input, selectedPrompt);
+      requestProcess(true);
     }
-  }, [input, selectedPrompt, processInput]);
+  }, [input, requestProcess]);
 
   const copyAndExit = useCallback(async () => {
-    const textToCopy = output || lastGoodOutput;
-    if (textToCopy) {
-      await Clipboard.copy(textToCopy);
-      await Clipboard.paste(textToCopy);
+    if (!output) {
+      requestProcess(true);
+      return;
     }
+    await Clipboard.copy(output);
+    await Clipboard.paste(output);
     await closeMainWindow();
-  }, [output, lastGoodOutput]);
+  }, [output, requestProcess]);
 
   const copyOutput = useCallback(async () => {
     const textToCopy = output || lastGoodOutput;
@@ -200,6 +171,12 @@ export default function Command() {
       }
     };
   }, [output, lastGoodOutput]);
+
+  const outputDisplay = output
+    ? `${output}${isOutputFresh ? "" : "\n\nProcessing..."}`
+    : isLoading
+      ? "Processing..."
+      : "";
 
   return (
     <Form
@@ -227,7 +204,7 @@ export default function Command() {
       </Form.Dropdown>
       <Form.TextArea
         id="input"
-        placeholder="Enter to process, Cmd+Enter to copy and exit"
+        placeholder="Type multiple lines; processing starts after you pause"
         value={input}
         onChange={handleInputChange}
         enableMarkdown
@@ -237,7 +214,7 @@ export default function Command() {
       <Form.TextArea
         id="output"
         placeholder="Output"
-        value={output || (isLoading ? "Processing..." : "")}
+        value={outputDisplay}
         onChange={() => {}}
         enableMarkdown
       />

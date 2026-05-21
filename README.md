@@ -1,4 +1,4 @@
-Last Updated: 2025-12-07
+Last Updated: 2026-05-21
 
 # SenseType AI
 
@@ -8,42 +8,43 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 
 - **Two input modes**: DeepSense (multi-line) and QuickSense (single-line)
 - **Multiple prompts**: Type English, Type Chinese, Improve Writing, Fix Grammar, etc.
-- **Selected text support**: Auto-fills and processes selected text when launching QuickSense
-- **Clipboard history**: Access recent clipboard items, append to input or paste directly
+- **Automatic processing**: Processes after a short pause while keeping requests serialized
+- **Clipboard history**: Append or manually paste recent clipboard items from QuickSense
 - **Custom prompts**: Add your own prompts via JSON in preferences
 - **Any OpenAI-compatible API**: Works with OpenRouter, OpenAI, local LLMs, etc.
 - **Automatic copy-to-clipboard** on exit
 
 ## Screenshots
 
-| DeepSense | QuickSense |
-|-----------|------------|
+| DeepSense                        | QuickSense                         |
+| -------------------------------- | ---------------------------------- |
 | ![DeepSense](docs/DeepSense.jpg) | ![QuickSense](docs/QuickSense.jpg) |
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| **DeepSense** | Multi-line input for longer text (Form UI) |
-| **QuickSense** | Single-line quick input with prompt selection (List UI) |
-| **Type English** | Quick input preset for English typing |
-| **Type Chinese** | Quick input preset for Chinese typing |
-| **Improve Writing** | Quick input preset for improving writing |
+| Command             | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| **DeepSense**       | Multi-line input for longer text (Form UI)              |
+| **QuickSense**      | Single-line quick input with prompt selection (List UI) |
+| **Type English**    | Quick input preset for English typing                   |
+| **Type Chinese**    | Quick input preset for Chinese typing                   |
+| **Improve Writing** | Quick input preset for improving writing                |
 
 ## Usage
 
 ### DeepSense (Multi-line)
+
 1. Search "DeepSense" in Raycast
 2. Select a prompt from dropdown
-3. Type or paste text, press `Enter` to process
+3. Type or paste multi-line text; processing starts after you pause
 4. `Cmd+Enter` to copy, paste and exit
 
 ### QuickSense (Single-line)
+
 1. Search "QuickSense" or preset commands (e.g., "Type English")
-2. If text is selected in another app, it auto-fills and processes immediately
-3. Type in search bar, press `Enter` to process
-4. `Cmd+Enter` to copy, paste and exit
-5. Use clipboard history section to append previous items to input
+2. Type pinyin or text in the search bar; processing starts after you pause
+3. `Cmd+Enter` to copy, paste and exit
+4. Use Clipboard History to append or manually paste recent clipboard items
 
 ## Configuration
 
@@ -55,8 +56,9 @@ In Raycast preferences:
 - **Custom Prompts**: JSON array to add custom prompts
 
 ### Custom Prompts Example
+
 ```json
-[{"name": "Translate", "prompt": "Translate to English"}]
+[{ "name": "Translate", "prompt": "Translate to English" }]
 ```
 
 ## Development

@@ -5,15 +5,21 @@ import {
   closeMainWindow,
   environment,
   getPreferenceValues,
-  getSelectedText,
   Icon,
   List,
   showToast,
   Toast,
 } from "@raycast/api";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { callOpenRouter, isAbortError, isOpenRouterError, parsePrompts, Prompt } from "./openrouter";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  callOpenRouter,
+  isAbortError,
+  isOpenRouterError,
+  parsePrompts,
+  Prompt,
+} from "./openrouter";
 import defaultPrompts from "./prompts.json";
+import { useAutoProcessor } from "./useAutoProcessor";
 
 interface ClipboardItem {
   text: string;
@@ -39,32 +45,14 @@ export default function QuickSense() {
 
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<string>(presetPrompt || "");
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>(undefined);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Track if initial selected text has been processed
-  const initialProcessedRef = useRef(false);
-
-  // Load selected text and clipboard history on mount
   useEffect(() => {
-    async function initialize() {
-      // Try to get selected text first
-      try {
-        const selectedText = await getSelectedText();
-        if (selectedText?.trim()) {
-          setInput(selectedText);
-          initialProcessedRef.current = true;
-        }
-      } catch {
-        // No selected text, ignore
-      }
-
-      // Load clipboard history
+    async function loadClipboardHistory() {
       const items: ClipboardItem[] = [];
+
       for (let offset = 0; offset <= 5; offset++) {
         try {
           const text = await Clipboard.readText({ offset });
@@ -72,12 +60,14 @@ export default function QuickSense() {
             items.push({ text, offset });
           }
         } catch {
-          // Ignore errors for individual clipboard items
+          // Ignore unavailable clipboard history items.
         }
       }
+
       setClipboardHistory(items);
     }
-    initialize();
+
+    loadClipboardHistory();
   }, []);
 
   // Parse prompts
@@ -120,87 +110,52 @@ export default function QuickSense() {
   );
 
   const processInput = useCallback(
-    async (text: string, promptName: string) => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      if (!text.trim()) {
-        setOutput("");
-        setIsLoading(false);
-        return;
-      }
-
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
-
-      setIsLoading(true);
-
-      try {
-        const response = await callOpenRouter(text, {
-          apiKey: preferences.apiKey,
-          baseUrl: preferences.apiBaseUrl,
-          model,
-          signal: abortController.signal,
-          templatePrompt: getPromptContent(promptName),
-        });
-
-        if (!abortController.signal.aborted) {
-          setOutput(response.text);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        if (isAbortError(error)) {
-          setIsLoading(false);
-          return;
-        }
-
-        console.error("OpenRouter error:", error);
-        const message = isOpenRouterError(error) ? error.message : "An unexpected error occurred";
-
-        await showToast({
-          style: Toast.Style.Failure,
-          title: "Error",
-          message,
-        });
-
-        setIsLoading(false);
-      }
+    async (text: string, promptName: string, signal: AbortSignal) => {
+      const response = await callOpenRouter(text, {
+        apiKey: preferences.apiKey,
+        baseUrl: preferences.apiBaseUrl,
+        model,
+        signal,
+        templatePrompt: getPromptContent(promptName),
+      });
+      return response.text;
     },
-    [preferences.apiKey, preferences.apiBaseUrl, model, getPromptContent]
+    [getPromptContent, model, preferences.apiBaseUrl, preferences.apiKey]
   );
 
-  // Auto-process when initial selected text is loaded and prompt is ready
-  useEffect(() => {
-    if (initialProcessedRef.current && input.trim() && selectedPrompt) {
-      initialProcessedRef.current = false; // Only trigger once
-      processInput(input, selectedPrompt);
+  const handleProcessError = useCallback(async (error: unknown) => {
+    if (isAbortError(error)) {
+      return;
     }
-  }, [input, selectedPrompt, processInput]);
 
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
+    console.error("OpenRouter error:", error);
+    const message = isOpenRouterError(error) ? error.message : "An unexpected error occurred";
+
+    await showToast({
+      style: Toast.Style.Failure,
+      title: "Error",
+      message,
+    });
   }, []);
 
-  const handleProcess = useCallback(() => {
-    if (isLoading) return; // Throttle: skip if already processing
-    if (input.trim() && selectedPrompt) {
-      processInput(input, selectedPrompt);
-    }
-  }, [input, selectedPrompt, processInput, isLoading]);
+  const { isLoading, isOutputFresh, requestProcess } = useAutoProcessor({
+    input,
+    promptName: selectedPrompt,
+    process: processInput,
+    onResult: setOutput,
+    onError: handleProcessError,
+    onReset: () => setOutput(""),
+  });
 
   const copyAndExit = useCallback(async () => {
     if (!output) {
-      // No output yet, trigger process instead
-      handleProcess();
+      requestProcess(true);
       return;
     }
     await Clipboard.copy(output);
     await Clipboard.paste(output);
     await closeMainWindow();
-  }, [output, handleProcess]);
+  }, [output, requestProcess]);
 
   const copyOutput = useCallback(async () => {
     if (output) {
@@ -221,45 +176,72 @@ export default function QuickSense() {
     };
   }, [output]);
 
-  const markdown = output || (isLoading ? "*Processing...*" : "*Type to start*");
+  const handleSelectionChange = useCallback((id: string | null) => {
+    setSelectedItemId(id ?? undefined);
+  }, []);
+
+  const markdown = output
+    ? `${output}${isOutputFresh ? "" : "\n\n*Processing...*"}`
+    : isLoading
+      ? "*Processing...*"
+      : "*Type to start*";
 
   // Filter prompts: show only preset prompt if preset, otherwise show all
-  const displayPrompts = presetPrompt
-    ? prompts.filter((p) => p.name === presetPrompt)
-    : prompts;
+  const displayPrompts = presetPrompt ? prompts.filter((p) => p.name === presetPrompt) : prompts;
+  const firstPromptItemId = displayPrompts[0] ? `prompt-${displayPrompts[0].name}` : undefined;
 
-
-  // Append clipboard item to input and reset selection to first item
-  const appendAndGoToFirst = useCallback((text: string) => {
-    setInput((prev) => prev + text);
-    // Reset selection to first prompt item
-    if (displayPrompts.length > 0) {
-      setSelectedItemId(`prompt-${displayPrompts[0].name}`);
+  useEffect(() => {
+    if (!selectedItemId && firstPromptItemId) {
+      setSelectedItemId(firstPromptItemId);
     }
-  }, [displayPrompts]);
+  }, [firstPromptItemId, selectedItemId]);
 
-  // Paste clipboard item and exit
+  const handleInputChange = useCallback(
+    (text: string) => {
+      setInput(text);
+
+      if (firstPromptItemId) {
+        setSelectedItemId(firstPromptItemId);
+      }
+
+      if (!text.trim()) {
+        setOutput("");
+      }
+    },
+    [firstPromptItemId]
+  );
+
+  const appendAndGoToFirst = useCallback(
+    (text: string) => {
+      setInput((prev) => prev + text);
+
+      if (firstPromptItemId) {
+        setSelectedItemId(firstPromptItemId);
+      }
+    },
+    [firstPromptItemId]
+  );
+
   const pasteClipboardItem = useCallback(async (text: string) => {
     await Clipboard.paste(text);
     await closeMainWindow();
   }, []);
 
-  // Truncate text for display
   const truncateText = (text: string, maxLength = 50) => {
     const singleLine = text.replace(/\n/g, " ").trim();
-    return singleLine.length > maxLength ? singleLine.slice(0, maxLength) + "..." : singleLine;
+    return singleLine.length > maxLength ? `${singleLine.slice(0, maxLength)}...` : singleLine;
   };
 
   return (
     <List
       isLoading={isLoading}
       searchText={input}
-      onSearchTextChange={setInput}
-      searchBarPlaceholder="Type to translate or search clipboard..."
+      onSearchTextChange={handleInputChange}
+      searchBarPlaceholder="Type pinyin or text..."
       filtering={false}
       isShowingDetail
       selectedItemId={selectedItemId}
-      onSelectionChange={setSelectedItemId}
+      onSelectionChange={handleSelectionChange}
     >
       <List.Section title="Translate">
         {displayPrompts.map((p) => (
@@ -268,19 +250,20 @@ export default function QuickSense() {
             key={p.name}
             title={p.name}
             icon={Icon.Text}
-            detail={<List.Item.Detail markdown={selectedPrompt === p.name ? markdown : `*Select to use ${p.name}*`} />}
+            detail={
+              <List.Item.Detail
+                markdown={selectedPrompt === p.name ? markdown : `*Select to use ${p.name}*`}
+              />
+            }
             actions={
               <ActionPanel>
                 {presetPrompt ? (
-                  <Action title="Process" onAction={handleProcess} />
+                  <Action title="Process" onAction={() => requestProcess(true)} />
                 ) : (
                   <Action
                     title="Select Prompt"
                     onAction={() => {
                       setSelectedPrompt(p.name);
-                      if (input.trim()) {
-                        processInput(input, p.name);
-                      }
                     }}
                   />
                 )}
@@ -310,10 +293,7 @@ export default function QuickSense() {
             detail={<List.Item.Detail markdown={`\`\`\`\n${item.text}\n\`\`\``} />}
             actions={
               <ActionPanel>
-                <Action
-                  title="Append to Input"
-                  onAction={() => appendAndGoToFirst(item.text)}
-                />
+                <Action title="Append to Input" onAction={() => appendAndGoToFirst(item.text)} />
                 <Action
                   title="Paste and Exit"
                   onAction={() => pasteClipboardItem(item.text)}

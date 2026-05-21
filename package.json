@@ -4,7 +4,10 @@
   "description": "AI-powered input engine that senses your intent and transforms your typing",
   "icon": "extension-icon.png",
   "author": "thomas",
-  "categories": ["Productivity", "Developer Tools"],
+  "categories": [
+    "Productivity",
+    "Developer Tools"
+  ],
   "license": "MIT",
   "commands": [
     {
@@ -80,7 +83,7 @@
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.11",
     "@types/node": "22.10.1",
-    "@types/react": "18.3.14",
+    "@types/react": "19.0.10",
     "eslint": "^8.57.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
