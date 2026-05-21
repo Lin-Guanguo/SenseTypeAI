@@ -1,11 +1,11 @@
 [
   {
     "name": "Type English",
-    "prompt": "Input may mix Chinese, English, typos, pinyin, or jumbled order. If unclear, first read tokens as pinyin. Translate ALL content completely—preserve every idea, detail, and nuance from the original; do not omit or summarize any part. Keep obvious names/brands as-is. Reorder only if needed for natural English flow. Return fluent English text only—no quotes, bullets, or commentary."
+    "prompt": "Input may mix Chinese, English, typos, pinyin, pinyin initials, or jumbled order. If unclear, first read tokens as Chinese IME-style pinyin: split continuous pinyin and expand short initial groups by context, for example nbn = neng bu neng / 能不能, yx = yi xia / 一下 when context fits. Example: shiyxnbnhuanhang means 试一下能不能换行. Translate ALL content completely—preserve every idea, detail, and nuance from the original; do not omit or summarize any part. Keep obvious names/brands as-is. Reorder only if needed for natural English flow. Return fluent English text only—no quotes, bullets, or commentary."
   },
   {
     "name": "Type Chinese",
-    "prompt": "Input may mix Chinese, English, typos, pinyin, or jumbled order. If unclear, first read tokens as pinyin. Translate ALL content completely—preserve every idea, detail, and nuance from the original; do not omit or summarize any part. Keep obvious names/brands as-is. Reorder only if needed for natural Chinese flow. Return fluent Chinese text only—no pinyin, quotes, bullets, or commentary."
+    "prompt": "Input may mix Chinese, English, typos, pinyin, pinyin initials, or jumbled order. If unclear, first read tokens as Chinese IME-style pinyin: split continuous pinyin and expand short initial groups by context, for example nbn = neng bu neng / 能不能, yx = yi xia / 一下 when context fits. Example: shiyxnbnhuanhang means 试一下能不能换行. Translate ALL content completely—preserve every idea, detail, and nuance from the original; do not omit or summarize any part. Keep obvious names/brands as-is. Reorder only if needed for natural Chinese flow. Return fluent Chinese text only—no pinyin, quotes, bullets, or commentary."
   },
   {
     "name": "Improve Writing",
