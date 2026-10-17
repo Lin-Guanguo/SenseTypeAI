@@ -9,6 +9,7 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 - **Two input modes**: DeepSense (multi-line) and QuickSense (single-line)
 - **Multiple prompts**: Type English, Type Chinese, Improve Writing, Fix Grammar, etc.
 - **Automatic processing**: Processes after a short pause while keeping requests serialized
+- **Selected text**: Quick commands automatically fill in selected text from the active app and process it
 - **Clipboard history**: Append or manually paste recent clipboard items from QuickSense
 - **Custom prompts**: Add your own prompts via JSON in preferences
 - **Any OpenAI-compatible API**: Works with OpenRouter, OpenAI, local LLMs, etc.
@@ -42,9 +43,11 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 ### QuickSense (Single-line)
 
 1. Search "QuickSense" or preset commands (e.g., "Type English")
-2. Type pinyin or text in the search bar; processing starts after you pause
+2. Selected text from the active app is filled in and processed automatically when available. Otherwise, type pinyin or text in the search bar; processing starts after you pause
 3. `Cmd+Enter` to copy, paste and exit
 4. Use Clipboard History to append or manually paste recent clipboard items
+
+For faster access, assign global hotkeys to **Type English** and **Type Chinese** in Raycast Settings. Select text in another app, then press the command's hotkey to translate it. If the app does not expose its selection, copy the text and paste it into the command manually.
 
 ## Configuration
 
