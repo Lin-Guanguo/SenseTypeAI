@@ -5,13 +5,14 @@ import {
   closeMainWindow,
   environment,
   getPreferenceValues,
+  PopToRootType,
   getSelectedText,
   Icon,
   List,
   showToast,
   Toast,
 } from "@raycast/api";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   callOpenRouter,
   isAbortError,
@@ -49,13 +50,15 @@ export default function QuickSense() {
   const [selectedPrompt, setSelectedPrompt] = useState<string>(presetPrompt || "");
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>(undefined);
+  const initialSelection = useRef<Promise<string> | null>(null);
 
   useEffect(() => {
     let active = true;
 
     async function loadSelectedText() {
       try {
-        const text = await getSelectedText();
+        initialSelection.current ??= getSelectedText();
+        const text = await initialSelection.current;
         if (active && text.trim()) {
           setInput((current) => current || text);
         }
@@ -175,13 +178,13 @@ export default function QuickSense() {
     }
     await Clipboard.copy(output);
     await Clipboard.paste(output);
-    await closeMainWindow();
+    await closeMainWindow({ popToRootType: PopToRootType.Immediate });
   }, [output, requestProcess]);
 
   const copyOutput = useCallback(async () => {
     if (output) {
       await Clipboard.copy(output);
-      await closeMainWindow();
+      await closeMainWindow({ popToRootType: PopToRootType.Immediate });
     }
   }, [output]);
 
@@ -233,7 +236,7 @@ export default function QuickSense() {
 
   const pasteClipboardItem = useCallback(async (text: string) => {
     await Clipboard.paste(text);
-    await closeMainWindow();
+    await closeMainWindow({ popToRootType: PopToRootType.Immediate });
   }, []);
 
   const truncateText = (text: string, maxLength = 50) => {

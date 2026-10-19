@@ -5,6 +5,7 @@ import {
   closeMainWindow,
   Form,
   getPreferenceValues,
+  PopToRootType,
   showToast,
   Toast,
 } from "@raycast/api";
@@ -148,14 +149,14 @@ export default function Command() {
     }
     await Clipboard.copy(output);
     await Clipboard.paste(output);
-    await closeMainWindow();
+    await closeMainWindow({ popToRootType: PopToRootType.Immediate });
   }, [output, requestProcess]);
 
   const copyOutput = useCallback(async () => {
     const textToCopy = output || lastGoodOutput;
     if (textToCopy) {
       await Clipboard.copy(textToCopy);
-      await closeMainWindow();
+      await closeMainWindow({ popToRootType: PopToRootType.Immediate });
     }
   }, [output, lastGoodOutput]);
 
