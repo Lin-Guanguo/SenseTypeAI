@@ -10,6 +10,8 @@
 type ExtensionPreferences = {
   /** API Key - API key for the AI service */
   "apiKey": string,
+  /** API Key Note - Optional reminder of the key's provider, account, or nickname (e.g. OpenRouter / personal / SenseType). Stored as plain text; do not enter the full key here. */
+  "apiKeyNote": string,
   /** API Base URL - OpenAI-compatible API endpoint */
   "apiBaseUrl": string,
   /** Model - Model ID (e.g. google/gemini-2.5-flash-lite, gpt-4o) */

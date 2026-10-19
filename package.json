@@ -52,6 +52,14 @@
       "required": true
     },
     {
+      "name": "apiKeyNote",
+      "title": "API Key Note",
+      "description": "Optional reminder of the key's provider, account, or nickname (e.g. OpenRouter / personal / SenseType). Stored as plain text; do not enter the full key here.",
+      "type": "textfield",
+      "required": false,
+      "default": ""
+    },
+    {
       "name": "apiBaseUrl",
       "title": "API Base URL",
       "description": "OpenAI-compatible API endpoint",

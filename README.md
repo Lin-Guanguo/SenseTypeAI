@@ -9,11 +9,10 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 - **Two input modes**: DeepSense (multi-line) and QuickSense (single-line)
 - **Multiple prompts**: Type English, Type Chinese, Improve Writing, Fix Grammar, etc.
 - **Automatic processing**: Processes after a short pause while keeping requests serialized
-- **Selected text**: Quick commands automatically fill in selected text from the active app and process it
 - **Clipboard history**: Append or manually paste recent clipboard items from QuickSense
 - **Custom prompts**: Add your own prompts via JSON in preferences
 - **Any OpenAI-compatible API**: Works with OpenRouter, OpenAI, local LLMs, etc.
-- **Automatic copy-to-clipboard** on exit
+- **Explicit copy and paste** through actions and keyboard shortcuts
 
 ## Screenshots
 
@@ -38,22 +37,25 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 1. Search "DeepSense" in Raycast
 2. Select a prompt from dropdown
 3. Type or paste multi-line text; processing starts after you pause
-4. `Cmd+Enter` to copy, paste and exit
+4. `Cmd+C` to copy output and exit, or `Cmd+Enter` to copy, paste and exit
 
 ### QuickSense (Single-line)
 
 1. Search "QuickSense" or preset commands (e.g., "Type English")
-2. Selected text from the active app is filled in and processed automatically when available. Otherwise, type pinyin or text in the search bar; processing starts after you pause
-3. `Cmd+Enter` to copy, paste and exit
+2. Type or paste text in the search bar; processing starts after you pause
+3. `Cmd+C` to copy output and exit, or `Cmd+Enter` to copy, paste and exit
 4. Use Clipboard History to append or manually paste recent clipboard items
 
-For faster access, assign global hotkeys to **Type English** and **Type Chinese** in Raycast Settings. Select text in another app, then press the command's hotkey to translate it. If the app does not expose its selection, copy the text and paste it into the command manually.
+Commands only write to the clipboard when you choose a copy or paste action. Translating or closing the command does not copy output automatically.
+
+For faster access, assign global hotkeys to **Type English** and **Type Chinese** in Raycast Settings. Open a command, then type or paste text into its input to translate it.
 
 ## Configuration
 
 In Raycast preferences:
 
 - **API Key**: Your API key (required)
+- **API Key Note**: Optional plain-text reminder of the key's provider, account, or nickname; not sent to the AI service
 - **API Base URL**: OpenAI-compatible endpoint (default: `https://openrouter.ai/api/v1`)
 - **Model**: Model ID (default: `google/gemini-2.5-flash-lite`)
 - **Custom Prompts**: JSON array to add custom prompts

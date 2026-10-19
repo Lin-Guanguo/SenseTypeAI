@@ -5,7 +5,6 @@ import {
   closeMainWindow,
   environment,
   getPreferenceValues,
-  getSelectedText,
   Icon,
   List,
   showToast,
@@ -49,26 +48,6 @@ export default function QuickSense() {
   const [selectedPrompt, setSelectedPrompt] = useState<string>(presetPrompt || "");
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadSelectedText() {
-      try {
-        const text = await getSelectedText();
-        if (active && text.trim()) {
-          setInput((current) => current || text);
-        }
-      } catch {
-        // Some apps do not expose selected text; manual input remains available.
-      }
-    }
-
-    loadSelectedText();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     async function loadClipboardHistory() {
@@ -181,20 +160,8 @@ export default function QuickSense() {
   const copyOutput = useCallback(async () => {
     if (output) {
       await Clipboard.copy(output);
-      await showToast({
-        style: Toast.Style.Success,
-        title: "Copied to clipboard",
-      });
+      await closeMainWindow();
     }
-  }, [output]);
-
-  // Copy on exit
-  useEffect(() => {
-    return () => {
-      if (output) {
-        Clipboard.copy(output);
-      }
-    };
   }, [output]);
 
   const handleSelectionChange = useCallback((id: string | null) => {
@@ -294,7 +261,7 @@ export default function QuickSense() {
                   shortcut={{ modifiers: ["cmd"], key: "return" }}
                 />
                 <Action
-                  title="Copy Output"
+                  title="Copy and Exit"
                   onAction={copyOutput}
                   shortcut={{ modifiers: ["cmd"], key: "c" }}
                 />

@@ -155,21 +155,8 @@ export default function Command() {
     const textToCopy = output || lastGoodOutput;
     if (textToCopy) {
       await Clipboard.copy(textToCopy);
-      await showToast({
-        style: Toast.Style.Success,
-        title: "Copied to clipboard",
-      });
+      await closeMainWindow();
     }
-  }, [output, lastGoodOutput]);
-
-  // Copy on exit (when component unmounts with output)
-  useEffect(() => {
-    return () => {
-      const textToCopy = output || lastGoodOutput;
-      if (textToCopy) {
-        Clipboard.copy(textToCopy);
-      }
-    };
   }, [output, lastGoodOutput]);
 
   const outputDisplay = output
@@ -190,7 +177,7 @@ export default function Command() {
           />
           <Action title="Process" onAction={handleSubmit} />
           <Action
-            title="Copy Output"
+            title="Copy and Exit"
             onAction={copyOutput}
             shortcut={{ modifiers: ["cmd"], key: "c" }}
           />
