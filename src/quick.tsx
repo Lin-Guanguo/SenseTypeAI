@@ -5,6 +5,7 @@ import {
   closeMainWindow,
   environment,
   getPreferenceValues,
+  getSelectedText,
   Icon,
   List,
   showToast,
@@ -48,6 +49,26 @@ export default function QuickSense() {
   const [selectedPrompt, setSelectedPrompt] = useState<string>(presetPrompt || "");
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSelectedText() {
+      try {
+        const text = await getSelectedText();
+        if (active && text.trim()) {
+          setInput((current) => current || text);
+        }
+      } catch {
+        // Some apps do not expose selected text; manual input remains available.
+      }
+    }
+
+    loadSelectedText();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     async function loadClipboardHistory() {

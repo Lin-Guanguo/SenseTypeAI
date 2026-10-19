@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_IDLE_MS = 700;
-const DEFAULT_MAX_WAIT_MS = 2500;
+const DEFAULT_MAX_WAIT_MS = 5000;
 
 export interface AutoProcessRequest {
   text: string;
