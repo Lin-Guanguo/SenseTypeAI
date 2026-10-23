@@ -1,6 +1,14 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  plugins: [
+    {
+      name: "raycast-test-api",
+      enforce: "pre",
+      // Raycast supplies this module at runtime; tests provide their own mock.
+      resolveId: (id) => (id === "@raycast/api" ? id : undefined),
+    },
+  ],
   test: {
     globals: true,
     environment: "node",

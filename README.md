@@ -47,7 +47,7 @@ An AI-powered input engine for Raycast that senses your intent and transforms yo
 3. `Cmd+C` to copy output and exit, or `Cmd+Enter` to copy, paste and exit
 4. Use Clipboard History to append or manually paste recent clipboard items
 
-Translation output is copied only when you choose a copy or paste action. Translating or closing the command does not copy output automatically. Copy-and-exit and paste-and-exit actions immediately reset the command so the next launch starts fresh.
+Translation output is copied only when you choose a copy or paste action. Translating or closing the command does not copy output automatically. Copy-and-exit and paste-and-exit actions wait for the latest input and selected prompt to finish processing, starting immediately if needed. If processing fails, the command stays open without copying an older result. After a successful exit, the command resets so the next launch starts fresh.
 
 For faster access, assign global hotkeys to **Type English** and **Type Chinese** in Raycast Settings. Select text in another app, then press the command's hotkey to translate it. If selected text is unavailable, type or paste it into the command manually.
 

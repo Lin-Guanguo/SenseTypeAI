@@ -9,6 +9,11 @@ export interface AutoProcessRequest {
   requestKey: string;
 }
 
+interface AutoProcessResult {
+  requestKey: string;
+  result?: string;
+}
+
 interface UseAutoProcessorOptions {
   input: string;
   promptName: string;
@@ -44,10 +49,11 @@ export function useAutoProcessor({
   const latestPromptRef = useRef(promptName);
   const lastInputAtRef = useRef(0);
   const burstStartAtRef = useRef(0);
-  const isProcessingRef = useRef(false);
+  const activeProcessRef = useRef<Promise<AutoProcessResult | undefined> | null>(null);
   const queuedRef = useRef(false);
   const queuedForceRef = useRef(false);
   const lastCompletedKeyRef = useRef("");
+  const lastCompletedOutputRef = useRef("");
   const unmountedRef = useRef(false);
   const processRef = useRef(process);
   const onResultRef = useRef(onResult);
@@ -80,7 +86,7 @@ export function useAutoProcessor({
       return;
     }
 
-    if (isProcessingRef.current) {
+    if (activeProcessRef.current) {
       queuedRef.current = true;
       return;
     }
@@ -98,85 +104,97 @@ export function useAutoProcessor({
   }, [clearScheduledProcess, idleMs, maxWaitMs]);
 
   const runLatestInput = useCallback(
-    async (force = false) => {
+    (force = false): Promise<AutoProcessResult | undefined> => {
       clearScheduledProcess();
 
-      if (isProcessingRef.current) {
+      if (activeProcessRef.current) {
         queuedRef.current = true;
         queuedForceRef.current = queuedForceRef.current || force;
-        return;
+        return activeProcessRef.current;
       }
 
       const text = latestInputRef.current.trim();
       const activePromptName = latestPromptRef.current;
 
-      if (!text || !activePromptName) {
-        return;
+      if (!text || !activePromptName || unmountedRef.current) {
+        return Promise.resolve(undefined);
       }
 
       const requestKey = buildRequestKey(text, activePromptName);
       if (!force && requestKey === lastCompletedKeyRef.current) {
-        return;
+        return Promise.resolve({ requestKey, result: lastCompletedOutputRef.current });
       }
 
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
-      isProcessingRef.current = true;
       queuedRef.current = false;
       queuedForceRef.current = false;
       burstStartAtRef.current = 0;
+      lastCompletedKeyRef.current = "";
+      setOutputKey("");
       setIsLoading(true);
 
-      try {
-        const result = await processRef.current(text, activePromptName, abortController.signal);
+      const activeProcess = Promise.resolve().then(async () => {
+        try {
+          const result = await processRef.current(text, activePromptName, abortController.signal);
 
-        if (!abortController.signal.aborted && !unmountedRef.current) {
-          onResultRef.current(result, { text, promptName: activePromptName, requestKey });
-          lastCompletedKeyRef.current = requestKey;
-          setOutputKey(requestKey);
-        }
-      } catch (error) {
-        if (!abortController.signal.aborted) {
-          await onErrorRef.current?.(error);
-        }
-      } finally {
-        if (abortControllerRef.current === abortController) {
-          abortControllerRef.current = null;
-        }
+          if (!abortController.signal.aborted && !unmountedRef.current) {
+            onResultRef.current(result, { text, promptName: activePromptName, requestKey });
+            lastCompletedKeyRef.current = requestKey;
+            lastCompletedOutputRef.current = result;
+            setOutputKey(requestKey);
+            return { requestKey, result };
+          }
+        } catch (error) {
+          if (!abortController.signal.aborted) {
+            await onErrorRef.current?.(error);
+          }
+          return { requestKey };
+        } finally {
+          if (abortControllerRef.current === abortController) {
+            abortControllerRef.current = null;
+          }
 
-        isProcessingRef.current = false;
-        if (!unmountedRef.current) {
-          setIsLoading(false);
-        }
+          activeProcessRef.current = null;
+          if (!unmountedRef.current) {
+            setIsLoading(false);
+          }
 
-        if (!unmountedRef.current) {
-          const latestKey = buildRequestKey(latestInputRef.current, latestPromptRef.current);
-          const hasLatestInput = Boolean(latestInputRef.current.trim() && latestPromptRef.current);
-          const shouldRunQueued =
-            hasLatestInput &&
-            (queuedForceRef.current ||
-              (queuedRef.current && latestKey !== lastCompletedKeyRef.current));
-          const shouldRunChanged =
-            hasLatestInput && latestKey !== requestKey && latestKey !== lastCompletedKeyRef.current;
+          if (!unmountedRef.current) {
+            const latestKey = buildRequestKey(latestInputRef.current, latestPromptRef.current);
+            const hasLatestInput = Boolean(
+              latestInputRef.current.trim() && latestPromptRef.current
+            );
+            const shouldRunQueued =
+              hasLatestInput &&
+              (queuedForceRef.current ||
+                (queuedRef.current && latestKey !== lastCompletedKeyRef.current));
+            const shouldRunChanged =
+              hasLatestInput &&
+              latestKey !== requestKey &&
+              latestKey !== lastCompletedKeyRef.current;
 
-          if (shouldRunQueued || shouldRunChanged) {
-            const forceNext = queuedForceRef.current;
-            queuedRef.current = false;
-            queuedForceRef.current = false;
-            lastInputAtRef.current = Date.now();
-            burstStartAtRef.current = lastInputAtRef.current;
+            if (shouldRunQueued || shouldRunChanged) {
+              const forceNext = queuedForceRef.current;
+              queuedRef.current = false;
+              queuedForceRef.current = false;
+              lastInputAtRef.current = Date.now();
+              burstStartAtRef.current = lastInputAtRef.current;
 
-            if (forceNext) {
-              runProcessRef.current(true);
+              if (forceNext) {
+                runProcessRef.current(true);
+              } else {
+                scheduleProcess();
+              }
             } else {
-              scheduleProcess();
+              queuedRef.current = false;
+              queuedForceRef.current = false;
             }
-          } else {
-            queuedRef.current = false;
-            queuedForceRef.current = false;
           }
         }
-      }
+      });
+      activeProcessRef.current = activeProcess;
+      return activeProcess;
     },
     [clearScheduledProcess, scheduleProcess]
   );
@@ -237,10 +255,29 @@ export function useAutoProcessor({
     [input, promptName]
   );
 
+  const ensureLatestResult = useCallback(async () => {
+    latestInputRef.current = input;
+    latestPromptRef.current = promptName;
+    clearScheduledProcess();
+
+    while (!unmountedRef.current && latestInputRef.current.trim() && latestPromptRef.current) {
+      const completed = await (activeProcessRef.current ?? runLatestInput());
+      if (unmountedRef.current || !completed) {
+        return;
+      }
+
+      const latestKey = buildRequestKey(latestInputRef.current, latestPromptRef.current);
+      if (!activeProcessRef.current && completed.requestKey === latestKey) {
+        return completed.result;
+      }
+    }
+  }, [clearScheduledProcess, input, promptName, runLatestInput]);
+
   const currentKey = useMemo(() => buildRequestKey(input, promptName), [input, promptName]);
 
   return {
     currentKey,
+    ensureLatestResult,
     isLoading,
     isOutputFresh: Boolean(outputKey) && outputKey === currentKey,
     outputKey,

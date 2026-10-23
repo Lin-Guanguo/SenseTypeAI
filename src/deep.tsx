@@ -9,7 +9,7 @@ import {
   showToast,
   Toast,
 } from "@raycast/api";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   callOpenRouter,
   isAbortError,
@@ -33,6 +33,7 @@ export default function Command() {
   const [output, setOutput] = useState("");
   const [lastGoodOutput, setLastGoodOutput] = useState("");
   const [selectedPrompt, setSelectedPrompt] = useState<string>("");
+  const isExitingRef = useRef(false);
 
   // Parse prompts: user prompts are added to defaults
   const { prompts, promptError } = useMemo(() => {
@@ -118,7 +119,7 @@ export default function Command() {
     [lastGoodOutput]
   );
 
-  const { isLoading, isOutputFresh, requestProcess } = useAutoProcessor({
+  const { isLoading, isOutputFresh, requestProcess, ensureLatestResult } = useAutoProcessor({
     input,
     promptName: selectedPrompt,
     process: processInput,
@@ -142,23 +143,29 @@ export default function Command() {
     }
   }, [input, requestProcess]);
 
-  const copyAndExit = useCallback(async () => {
-    if (!output) {
-      requestProcess(true);
-      return;
-    }
-    await Clipboard.copy(output);
-    await Clipboard.paste(output);
-    await closeMainWindow({ popToRootType: PopToRootType.Immediate });
-  }, [output, requestProcess]);
+  const handleExit = useCallback(
+    async (paste = false) => {
+      if (isExitingRef.current) {
+        return;
+      }
+      isExitingRef.current = true;
 
-  const copyOutput = useCallback(async () => {
-    const textToCopy = output || lastGoodOutput;
-    if (textToCopy) {
-      await Clipboard.copy(textToCopy);
-      await closeMainWindow({ popToRootType: PopToRootType.Immediate });
-    }
-  }, [output, lastGoodOutput]);
+      try {
+        const result = await ensureLatestResult();
+        if (!result) {
+          return;
+        }
+        await Clipboard.copy(result);
+        if (paste) {
+          await Clipboard.paste(result);
+        }
+        await closeMainWindow({ popToRootType: PopToRootType.Immediate });
+      } finally {
+        isExitingRef.current = false;
+      }
+    },
+    [ensureLatestResult]
+  );
 
   const outputDisplay = output
     ? `${output}${isOutputFresh ? "" : "\n\nProcessing..."}`
@@ -173,13 +180,13 @@ export default function Command() {
         <ActionPanel>
           <Action
             title="Copy, Paste and Exit"
-            onAction={copyAndExit}
+            onAction={() => handleExit(true)}
             shortcut={{ modifiers: ["cmd"], key: "return" }}
           />
           <Action title="Process" onAction={handleSubmit} />
           <Action
             title="Copy and Exit"
-            onAction={copyOutput}
+            onAction={() => handleExit()}
             shortcut={{ modifiers: ["cmd"], key: "c" }}
           />
         </ActionPanel>

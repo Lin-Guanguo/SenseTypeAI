@@ -51,6 +51,7 @@ export default function QuickSense() {
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>(undefined);
   const initialSelection = useRef<Promise<string> | null>(null);
+  const isExitingRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -162,7 +163,7 @@ export default function QuickSense() {
     });
   }, []);
 
-  const { isLoading, isOutputFresh, requestProcess } = useAutoProcessor({
+  const { isLoading, isOutputFresh, requestProcess, ensureLatestResult } = useAutoProcessor({
     input,
     promptName: selectedPrompt,
     process: processInput,
@@ -171,22 +172,29 @@ export default function QuickSense() {
     onReset: () => setOutput(""),
   });
 
-  const copyAndExit = useCallback(async () => {
-    if (!output) {
-      requestProcess(true);
-      return;
-    }
-    await Clipboard.copy(output);
-    await Clipboard.paste(output);
-    await closeMainWindow({ popToRootType: PopToRootType.Immediate });
-  }, [output, requestProcess]);
+  const handleExit = useCallback(
+    async (paste = false) => {
+      if (isExitingRef.current) {
+        return;
+      }
+      isExitingRef.current = true;
 
-  const copyOutput = useCallback(async () => {
-    if (output) {
-      await Clipboard.copy(output);
-      await closeMainWindow({ popToRootType: PopToRootType.Immediate });
-    }
-  }, [output]);
+      try {
+        const result = await ensureLatestResult();
+        if (!result) {
+          return;
+        }
+        await Clipboard.copy(result);
+        if (paste) {
+          await Clipboard.paste(result);
+        }
+        await closeMainWindow({ popToRootType: PopToRootType.Immediate });
+      } finally {
+        isExitingRef.current = false;
+      }
+    },
+    [ensureLatestResult]
+  );
 
   const handleSelectionChange = useCallback((id: string | null) => {
     setSelectedItemId(id ?? undefined);
@@ -281,12 +289,12 @@ export default function QuickSense() {
                 )}
                 <Action
                   title="Copy, Paste and Exit"
-                  onAction={copyAndExit}
+                  onAction={() => handleExit(true)}
                   shortcut={{ modifiers: ["cmd"], key: "return" }}
                 />
                 <Action
                   title="Copy and Exit"
-                  onAction={copyOutput}
+                  onAction={() => handleExit()}
                   shortcut={{ modifiers: ["cmd"], key: "c" }}
                 />
               </ActionPanel>
